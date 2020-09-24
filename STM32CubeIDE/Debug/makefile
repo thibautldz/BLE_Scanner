@@ -51,8 +51,8 @@ BLE_p2pClient.hex \
 all: BLE_p2pClient.elf secondary-outputs
 
 # Tool invocations
-BLE_p2pClient.elf: $(OBJS) $(USER_OBJS) C:\ST\STM32CubeWB-master\Projects\P-NUCLEO-WB55.Nucleo\Applications\BLE\BLE_p2pClient\STM32CubeIDE\STM32WB55RGVX_FLASH.ld
-	arm-none-eabi-gcc -o "BLE_p2pClient.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\ST\STM32CubeWB-master\Projects\P-NUCLEO-WB55.Nucleo\Applications\BLE\BLE_p2pClient\STM32CubeIDE\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BLE_p2pClient.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+BLE_p2pClient.elf: $(OBJS) $(USER_OBJS) C:\ST\STM32CubeWB-master\Projects\P-NUCLEO-WB55.Nucleo\Applications\BLE\BLE_Scanner\STM32CubeIDE\STM32WB55RGVX_FLASH.ld
+	arm-none-eabi-gcc -o "BLE_p2pClient.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\ST\STM32CubeWB-master\Projects\P-NUCLEO-WB55.Nucleo\Applications\BLE\BLE_Scanner\STM32CubeIDE\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BLE_p2pClient.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

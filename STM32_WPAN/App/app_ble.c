@@ -538,6 +538,44 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
           event_data_size = le_advertising_event->Advertising_Report[0].Length_Data;
 
+          int inclus = 0;
+          if (index_tab < 40)
+          {
+        	  if (   le_advertising_event->Advertising_Report[0].Address[0] != 0
+          		  && le_advertising_event->Advertising_Report[0].Address[1] != 0
+            	  && le_advertising_event->Advertising_Report[0].Address[2] != 0
+          		  && le_advertising_event->Advertising_Report[0].Address[3] != 0
+          		  && le_advertising_event->Advertising_Report[0].Address[4] != 0
+          		  && le_advertising_event->Advertising_Report[0].Address[5] != 0)
+          		  {
+          			for(uint8_t i ; i < index_tab ; i++)
+          			{
+          				if (   le_advertising_event->Advertising_Report[0].Address[0] == table[i][0]
+          					&& le_advertising_event->Advertising_Report[0].Address[1] == table[i][1]
+          					&& le_advertising_event->Advertising_Report[0].Address[2] == table[i][2]
+          					&& le_advertising_event->Advertising_Report[0].Address[3] == table[i][3]
+          					&& le_advertising_event->Advertising_Report[0].Address[4] == table[i][4]
+          					&& le_advertising_event->Advertising_Report[0].Address[5] == table[i][5])
+          					{
+          						inclus = 1;
+          					}
+          			}
+          			if(inclus == 0)
+          			{
+          				for (int k = 0; k < 6; k++)
+          				{
+          					table[index_tab][k] = le_advertising_event->Advertising_Report[0].Address[k];
+          					//APP_DBG_MSG("%02X", table[index_tab][k]);
+          				}
+          				index_tab++;
+          			}
+          			else
+          			{
+          					//APP_DBG_MSG("already include");
+          			}
+          		}
+          	}
+
           /* WARNING: be careful when decoding advertising report as its raw format cannot be mapped on a C structure.
           The data and RSSI values could not be directly decoded from the RAM using the data and RSSI field from hci_le_advertising_report_event_rp0 structure.
           Instead they must be read by using offsets (please refer to BLE specification).
@@ -570,32 +608,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
                 /* USER CODE END AD_TYPE_TX_POWER_LEVEL */
                 break;
-                case AD_TYPE_MANUFACTURER_SPECIFIC_DATA: /* Manufacturer Specific */
-                /* USER CODE BEGIN AD_TYPE_MANUFACTURER_SPECIFIC_DATA */
 
-                /* USER CODE END AD_TYPE_MANUFACTURER_SPECIFIC_DATA */
-                  if (adlength >= 7 && adv_report_data[k + 2] == 0x01)
-                  { /* ST VERSION ID 01 */
-                    APP_DBG_MSG("--- ST MANUFACTURER ID --- \n");
-                    switch (adv_report_data[k + 3])
-                    {   /* Demo ID */
-                      case CFG_DEV_ID_P2P_SERVER1: /* End Device 1 */
-                        APP_DBG_MSG("-- SERVER DETECTED -- VIA MAN ID\n");
-                        BleApplicationContext.DeviceServerFound = 0x01;
-                        SERVER_REMOTE_BDADDR[0] = le_advertising_event->Advertising_Report[0].Address[0];
-                        SERVER_REMOTE_BDADDR[1] = le_advertising_event->Advertising_Report[0].Address[1];
-                        SERVER_REMOTE_BDADDR[2] = le_advertising_event->Advertising_Report[0].Address[2];
-                        SERVER_REMOTE_BDADDR[3] = le_advertising_event->Advertising_Report[0].Address[3];
-                        SERVER_REMOTE_BDADDR[4] = le_advertising_event->Advertising_Report[0].Address[4];
-                        SERVER_REMOTE_BDADDR[5] = le_advertising_event->Advertising_Report[0].Address[5];
-                        break;
-
-                      default:
-                        break;
-                    }
-
-                  }
-                  break;
                 case AD_TYPE_SERVICE_DATA: /* service data 16 bits */
                   /* USER CODE BEGIN AD_TYPE_SERVICE_DATA */
 
