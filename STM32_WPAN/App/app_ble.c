@@ -223,6 +223,8 @@ static const uint8_t BLE_CFG_IR_VALUE[16] = CFG_BLE_IRK;
 static const uint8_t BLE_CFG_ER_VALUE[16] = CFG_BLE_ERK;
 
 tBDAddr SERVER_REMOTE_BDADDR;
+
+typedef uint8_t ScanAddr[40][6];
 ScanAddr SCANNING_REPORT = { 0 };
 
 P2PC_APP_ConnHandle_Not_evt_t handleNotification;
