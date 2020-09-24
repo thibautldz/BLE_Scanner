@@ -226,6 +226,8 @@ tBDAddr SERVER_REMOTE_BDADDR;
 
 typedef uint8_t ScanAddr[40][6];
 ScanAddr SCANNING_REPORT = { 0 };
+static uint8_t index_tab = 0;
+uint8_t index_tab_save;
 
 P2PC_APP_ConnHandle_Not_evt_t handleNotification;
 
@@ -550,12 +552,12 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           		  {
           			for(uint8_t i ; i < index_tab ; i++)
           			{
-          				if (   le_advertising_event->Advertising_Report[0].Address[0] == table[i][0]
-          					&& le_advertising_event->Advertising_Report[0].Address[1] == table[i][1]
-          					&& le_advertising_event->Advertising_Report[0].Address[2] == table[i][2]
-          					&& le_advertising_event->Advertising_Report[0].Address[3] == table[i][3]
-          					&& le_advertising_event->Advertising_Report[0].Address[4] == table[i][4]
-          					&& le_advertising_event->Advertising_Report[0].Address[5] == table[i][5])
+          				if (   le_advertising_event->Advertising_Report[0].Address[0] == SCANNING_REPORT[i][0]
+          					&& le_advertising_event->Advertising_Report[0].Address[1] == SCANNING_REPORT[i][1]
+          					&& le_advertising_event->Advertising_Report[0].Address[2] == SCANNING_REPORT[i][2]
+          					&& le_advertising_event->Advertising_Report[0].Address[3] == SCANNING_REPORT[i][3]
+          					&& le_advertising_event->Advertising_Report[0].Address[4] == SCANNING_REPORT[i][4]
+          					&& le_advertising_event->Advertising_Report[0].Address[5] == SCANNING_REPORT[i][5])
           					{
           						inclus = 1;
           					}
@@ -564,7 +566,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           			{
           				for (int k = 0; k < 6; k++)
           				{
-          					table[index_tab][k] = le_advertising_event->Advertising_Report[0].Address[k];
+          					SCANNING_REPORT[index_tab][k] = le_advertising_event->Advertising_Report[0].Address[k];
           					//APP_DBG_MSG("%02X", table[index_tab][k]);
           				}
           				index_tab++;
