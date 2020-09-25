@@ -402,11 +402,21 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             BSP_LED_Off(LED_BLUE);
             /* USER CODE END GAP_GENERAL_DISCOVERY_PROC */
             APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n");
-            /*if a device found, connect to it, device 1 being chosen first if both found*/
-            if (BleApplicationContext.DeviceServerFound == 0x01 && BleApplicationContext.Device_Connection_Status != APP_BLE_CONNECTED_CLIENT)
+
+            for(int j ; j < index_tab ; j++)
             {
-              UTIL_SEQ_SetTask(1 << CFG_TASK_CONN_DEV_1_ID, CFG_SCH_PRIO_0);
+            	APP_DBG_MSG("%2d | ", j);
+            	for (int k = 0; k < 6; k++)
+            	{
+            		APP_DBG_MSG("%02X ", table[j][k]);
+            	}
+            	APP_DBG_MSG("|\n\r");
             }
+            index_tab_save = index_tab;
+            //index_tab = 0;
+
+            APP_DBG_MSG("To which one you want to connect ? \n\r");
+            APP_DBG_MSG("Type a number and press <ENTER>");
           }
         }
         break;
