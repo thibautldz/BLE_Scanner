@@ -228,6 +228,8 @@ typedef uint8_t ScanAddr[40][6];
 ScanAddr SCANNING_REPORT = { 0 };
 static uint8_t index_tab = 0;
 uint8_t index_tab_save;
+uint8_t buffertest[2];
+uint8_t count_buffer=0;
 
 P2PC_APP_ConnHandle_Not_evt_t handleNotification;
 
@@ -248,11 +250,17 @@ static void Ble_Tl_Init( void );
 static void Ble_Hci_Gap_Gatt_Init(void);
 static const uint8_t* BleGetBdAddress( void );
 static void Scan_Request( void );
-static void Connect_Request( void );
+static void Connect_Request( uint8_t );
 static void Switch_OFF_GPIO( void );
-
+void rx_usartCallBack( void );
 /* USER CODE BEGIN PFP */
-
+void rx_usartCallBack(void)
+{
+	uint8_t a = buffertest[0];
+	uint8_t b = buffertest[1];
+	uint8_t which_connect = (10*a) + b;
+	Connect_Request( which_connect );
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -402,13 +410,15 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             BSP_LED_Off(LED_BLUE);
             /* USER CODE END GAP_GENERAL_DISCOVERY_PROC */
             APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n");
+            APP_DBG_MSG("     REPORT BLE SCANNER\n\r");
+            APP_DBG_MSG("   |      ADDRESS      | \n\r");
 
             for(int j ; j < index_tab ; j++)
             {
             	APP_DBG_MSG("%2d | ", j);
             	for (int k = 0; k < 6; k++)
             	{
-            		APP_DBG_MSG("%02X ", table[j][k]);
+            		APP_DBG_MSG("%02X ", SCANNING_REPORT[j][k]);
             	}
             	APP_DBG_MSG("|\n\r");
             }
@@ -417,6 +427,10 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
             APP_DBG_MSG("To which one you want to connect ? \n\r");
             APP_DBG_MSG("Type a number and press <ENTER>");
+
+            HW_UART_Receive_IT(hw_uart1, buffertest , sizeof(buffertest), rx_usartCallBack);
+
+
           }
         }
         break;
@@ -883,20 +897,20 @@ static void Scan_Request( void )
   return;
 }
 
-static void Connect_Request( void )
+static void Connect_Request( uint8_t which_connect )
 {
   /* USER CODE BEGIN Connect_Request_1 */
 
   /* USER CODE END Connect_Request_1 */
   tBleStatus result;
 
-  APP_DBG_MSG("\r\n\r** CREATE CONNECTION TO SERVER **  \r\n\r");
+  APP_DBG_MSG("\r\n\r** CREATE CONNECTION TO SELECTED ADRESS **  \r\n\r");
 
   if (BleApplicationContext.Device_Connection_Status != APP_BLE_CONNECTED_CLIENT)
   {
     result = aci_gap_create_connection(SCAN_P,
                                        SCAN_L,
-                                       PUBLIC_ADDR, SERVER_REMOTE_BDADDR,
+                                       PUBLIC_ADDR, SCANNING_REPORT[which_connect],
                                        PUBLIC_ADDR,
                                        CONN_P1,
                                        CONN_P2,
