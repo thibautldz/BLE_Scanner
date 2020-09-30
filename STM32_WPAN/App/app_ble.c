@@ -421,8 +421,10 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             BSP_LED_Off(LED_BLUE);
             /* USER CODE END GAP_GENERAL_DISCOVERY_PROC */
             APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n");
-            APP_DBG_MSG("     REPORT BLE SCANNER\n\r");
-            APP_DBG_MSG("   |      ADDRESS      |        RSSI     |\n\r");
+            APP_DBG_MSG("          ------------------\n\r");
+            APP_DBG_MSG("        ||REPORT BLE SCANNER||\n\r");
+            APP_DBG_MSG("          ------------------\n\r");
+            APP_DBG_MSG(" N |      ADDRESS      |       RSSI     |\n\r");
 
             for(int j ; j < index_tab ; j++)
             {
@@ -431,14 +433,13 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             	{
             		APP_DBG_MSG("%02X ", SCANNING_REPORT[j][k]);
             	}
-            	APP_DBG_MSG("|     %4i dBm    ", SCANNING_RSSI[j]);
+            	APP_DBG_MSG("|    %4i dBm    ", SCANNING_RSSI[j]);
             	APP_DBG_MSG("|\n\r");
             }
             index_tab_save = index_tab;
             //index_tab = 0;
 
             APP_DBG_MSG("To which one you want to connect ? \n\r");
-            APP_DBG_MSG("Type a number and press <ENTER>");
 
             HW_UART_Receive_IT(hw_uart1, buffertest , sizeof(buffertest), rx_usartCallBack);
 
