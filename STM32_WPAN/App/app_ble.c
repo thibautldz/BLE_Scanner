@@ -225,8 +225,9 @@ static const uint8_t BLE_CFG_ER_VALUE[16] = CFG_BLE_ERK;
 tBDAddr SERVER_REMOTE_BDADDR;
 
 typedef uint8_t ScanAddr[40][6];
+typedef int8_t ScanRSSI[40];
 ScanAddr SCANNING_REPORT = { 0 };
-ScanAddr RSSI = { 0 };
+ScanRSSI SCANNING_RSSI = { 0 };
 static uint8_t index_tab = 0;
 uint8_t index_tab_save;
 uint8_t buffertest[2];
@@ -421,7 +422,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             /* USER CODE END GAP_GENERAL_DISCOVERY_PROC */
             APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n");
             APP_DBG_MSG("     REPORT BLE SCANNER\n\r");
-            APP_DBG_MSG("   |      ADDRESS      | \n\r");
+            APP_DBG_MSG("   |      ADDRESS      |        RSSI     |\n\r");
 
             for(int j ; j < index_tab ; j++)
             {
@@ -430,6 +431,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             	{
             		APP_DBG_MSG("%02X ", SCANNING_REPORT[j][k]);
             	}
+            	APP_DBG_MSG("|     %4i dBm    ", SCANNING_RSSI[j]);
             	APP_DBG_MSG("|\n\r");
             }
             index_tab_save = index_tab;
@@ -574,6 +576,13 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
           event_data_size = le_advertising_event->Advertising_Report[0].Length_Data;
 
+          /* WARNING: be careful when decoding advertising report as its raw format cannot be mapped on a C structure.
+          The data and RSSI values could not be directly decoded from the RAM using the data and RSSI field from hci_le_advertising_report_event_rp0 structure.
+          Instead they must be read by using offsets (please refer to BLE specification).
+          RSSI = *(uint8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
+          */
+          adv_report_data = (uint8_t*)(&le_advertising_event->Advertising_Report[0].Length_Data) + 1;
+
           int inclus = 0;
           if (index_tab < 40)
           {
@@ -598,6 +607,9 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           			}
           			if(inclus == 0)
           			{
+          				int8_t RSSI;
+          				RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
+          				SCANNING_RSSI[index_tab] = RSSI;
           				for (int k = 0; k < 6; k++)
           				{
           					SCANNING_REPORT[index_tab][k] = le_advertising_event->Advertising_Report[0].Address[k];
@@ -611,13 +623,6 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           			}
           		}
           	}
-
-          /* WARNING: be careful when decoding advertising report as its raw format cannot be mapped on a C structure.
-          The data and RSSI values could not be directly decoded from the RAM using the data and RSSI field from hci_le_advertising_report_event_rp0 structure.
-          Instead they must be read by using offsets (please refer to BLE specification).
-          RSSI = *(uint8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
-          */
-          adv_report_data = (uint8_t*)(&le_advertising_event->Advertising_Report[0].Length_Data) + 1;
           k = 0;
 
           /* search AD TYPE 0x09 (Complete Local Name) */
