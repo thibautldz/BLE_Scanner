@@ -226,6 +226,7 @@ tBDAddr SERVER_REMOTE_BDADDR;
 
 typedef uint8_t ScanAddr[40][6];
 ScanAddr SCANNING_REPORT = { 0 };
+ScanAddr RSSI = { 0 };
 static uint8_t index_tab = 0;
 uint8_t index_tab_save;
 uint8_t buffertest[2];
@@ -256,10 +257,19 @@ void rx_usartCallBack( void );
 /* USER CODE BEGIN PFP */
 void rx_usartCallBack(void)
 {
-	uint8_t a = buffertest[0];
-	uint8_t b = buffertest[1];
+	uint8_t a = buffertest[0]-48;
+	uint8_t b = buffertest[1]-48;
 	uint8_t which_connect = (10*a) + b;
-	Connect_Request( which_connect );
+	aci_gap_start_name_discovery_proc(SCAN_P,
+                                       SCAN_L,
+                                       PUBLIC_ADDR, SCANNING_REPORT[which_connect],
+                                       PUBLIC_ADDR,
+                                       CONN_P1,
+                                       CONN_P2,
+                                       0,
+                                       SUPERV_TIMEOUT,
+                                       CONN_L1,
+                                       CONN_L2);
 }
 /* USER CODE END PFP */
 
