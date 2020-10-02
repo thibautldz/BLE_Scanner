@@ -226,8 +226,12 @@ tBDAddr SERVER_REMOTE_BDADDR;
 
 typedef uint8_t ScanAddr[40][6];
 typedef int8_t ScanRSSI[40];
+typedef uint8_t ScanDATA[40][40];
+
 ScanAddr SCANNING_REPORT = { 0 };
 ScanRSSI SCANNING_RSSI = { 0 };
+ScanDATA SCANNING_DATA = { 0 };
+
 static uint8_t index_tab = 0;
 uint8_t index_tab_save;
 uint8_t buffertest[2];
@@ -252,25 +256,15 @@ static void Ble_Tl_Init( void );
 static void Ble_Hci_Gap_Gatt_Init(void);
 static const uint8_t* BleGetBdAddress( void );
 static void Scan_Request( void );
-static void Connect_Request( uint8_t );
+static void Connect_Request( void );
+static void Connect_Request_Selected_Addr( void );
 static void Switch_OFF_GPIO( void );
 void rx_usartCallBack( void );
 /* USER CODE BEGIN PFP */
 void rx_usartCallBack(void)
 {
-	uint8_t a = buffertest[0]-48;
-	uint8_t b = buffertest[1]-48;
-	uint8_t which_connect = (10*a) + b;
-	aci_gap_start_name_discovery_proc(SCAN_P,
-                                       SCAN_L,
-                                       PUBLIC_ADDR, SCANNING_REPORT[which_connect],
-                                       PUBLIC_ADDR,
-                                       CONN_P1,
-                                       CONN_P2,
-                                       0,
-                                       SUPERV_TIMEOUT,
-                                       CONN_L1,
-                                       CONN_L2);
+	UTIL_SEQ_SetTask(1<<CFG_TASK_CONN_DEV_SELECT_ID, CFG_PRIO_NBR);
+
 }
 /* USER CODE END PFP */
 
@@ -343,6 +337,7 @@ void APP_BLE_Init( void )
    */
   UTIL_SEQ_RegTask( 1<<CFG_TASK_START_SCAN_ID, UTIL_SEQ_RFU, Scan_Request);
   UTIL_SEQ_RegTask( 1<<CFG_TASK_CONN_DEV_1_ID, UTIL_SEQ_RFU, Connect_Request);
+  UTIL_SEQ_RegTask( 1<<CFG_TASK_CONN_DEV_SELECT_ID, UTIL_SEQ_RFU, Connect_Request_Selected_Addr);
 
   /**
    * Initialization of the BLE App Context
@@ -913,7 +908,7 @@ static void Scan_Request( void )
   return;
 }
 
-static void Connect_Request( uint8_t which_connect )
+static void Connect_Request( void )
 {
   /* USER CODE BEGIN Connect_Request_1 */
 
@@ -921,7 +916,55 @@ static void Connect_Request( uint8_t which_connect )
   tBleStatus result;
 
   APP_DBG_MSG("\r\n\r** CREATE CONNECTION TO SELECTED ADRESS **  \r\n\r");
+  BSP_LED_On(LED_BLUE);
+  if (BleApplicationContext.Device_Connection_Status != APP_BLE_CONNECTED_CLIENT)
+  {
+    result = aci_gap_create_connection(SCAN_P,
+                                       SCAN_L,
+                                       PUBLIC_ADDR, SERVER_REMOTE_BDADDR,
+                                       PUBLIC_ADDR,
+                                       CONN_P1,
+                                       CONN_P2,
+                                       0,
+                                       SUPERV_TIMEOUT,
+                                       CONN_L1,
+                                       CONN_L2);
 
+    if (result == BLE_STATUS_SUCCESS)
+    {
+    /* USER CODE BEGIN BLE_CONNECT_SUCCESS */
+
+    /* USER CODE END BLE_CONNECT_SUCCESS */
+    BleApplicationContext.Device_Connection_Status = APP_BLE_LP_CONNECTING;
+
+    }
+    else
+    {
+    /* USER CODE BEGIN BLE_CONNECT_FAILED */
+      BSP_LED_On(LED_RED);
+    /* USER CODE END BLE_CONNECT_FAILED */
+      BleApplicationContext.Device_Connection_Status = APP_BLE_IDLE;
+
+    }
+  }
+  /* USER CODE BEGIN Connect_Request_2 */
+
+  /* USER CODE END Connect_Request_2 */
+  return;
+}
+
+static void Connect_Request_Selected_Addr( void )
+{
+  /* USER CODE BEGIN Connect_Request_1 */
+
+  /* USER CODE END Connect_Request_1 */
+  tBleStatus result;
+  uint8_t a = buffertest[0]-48;
+  uint8_t b = buffertest[1]-48;
+  uint8_t which_connect = (10*a) + b;
+
+  APP_DBG_MSG("\r\n\r** CREATE CONNECTION TO SELECTED ADRESS **  \r\n\r");
+  BSP_LED_On(LED_BLUE);
   if (BleApplicationContext.Device_Connection_Status != APP_BLE_CONNECTED_CLIENT)
   {
     result = aci_gap_create_connection(SCAN_P,
@@ -938,7 +981,7 @@ static void Connect_Request( uint8_t which_connect )
     if (result == BLE_STATUS_SUCCESS)
     {
     /* USER CODE BEGIN BLE_CONNECT_SUCCESS */
-
+    BSP_LED_Off(LED_BLUE);
     /* USER CODE END BLE_CONNECT_SUCCESS */
     BleApplicationContext.Device_Connection_Status = APP_BLE_LP_CONNECTING;
 
