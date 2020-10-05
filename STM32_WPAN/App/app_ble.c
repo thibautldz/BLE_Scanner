@@ -234,7 +234,7 @@ ScanDATA SCANNING_DATA = { 0 };
 
 static uint8_t index_tab = 0;
 uint8_t index_tab_save;
-uint8_t buffertest[2];
+uint8_t buff_which[2];
 uint8_t count_buffer=0;
 
 P2PC_APP_ConnHandle_Not_evt_t handleNotification;
@@ -436,7 +436,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
             APP_DBG_MSG("To which one you want to connect ? \n\r");
 
-            HW_UART_Receive_IT(hw_uart1, buffertest , sizeof(buffertest), rx_usartCallBack);
+            HW_UART_Receive_IT(hw_uart1, buff_which , sizeof(buff_which), rx_usartCallBack);
 
 
           }
@@ -959,8 +959,8 @@ static void Connect_Request_Selected_Addr( void )
 
   /* USER CODE END Connect_Request_1 */
   tBleStatus result;
-  uint8_t a = buffertest[0]-48;
-  uint8_t b = buffertest[1]-48;
+  uint8_t a = buff_which[0]-48;
+  uint8_t b = buff_which[1]-48;
   uint8_t which_connect = (10*a) + b;
 
   APP_DBG_MSG("\r\n\r** CREATE CONNECTION TO SELECTED ADRESS **  \r\n\r");
