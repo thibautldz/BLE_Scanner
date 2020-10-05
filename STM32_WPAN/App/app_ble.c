@@ -960,15 +960,21 @@ static void Connect_Request_Selected_Addr( void )
   tBleStatus result;
   uint8_t a = buff_which[0]-48;
   uint8_t b = buff_which[1]-48;
+  uint8_t which_connect = (10*a) + b;
+
   if( (a < 0 || a > 9) && (b < 0 || b > 9) )
   {
 	  APP_DBG_MSG("You have to write a correct number, try again \n\r");
 	  HW_UART_Receive_IT(hw_uart1, buff_which , sizeof(buff_which), rx_usartCallBack);
 
   }
+  else if (which_connect > index_tab-1)
+  {
+	  APP_DBG_MSG("You choose a number out of the list, try again \n\r");
+	  HW_UART_Receive_IT(hw_uart1, buff_which , sizeof(buff_which), rx_usartCallBack);
+  }
   else
   {
-  uint8_t which_connect = (10*a) + b;
 
   APP_DBG_MSG("\r\n\r** CREATE CONNECTION TO SELECTED ADRESS **  \r\n\r");
   BSP_LED_On(LED_BLUE);
