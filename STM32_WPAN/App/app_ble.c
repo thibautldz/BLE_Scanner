@@ -264,7 +264,6 @@ void rx_usartCallBack( void );
 void rx_usartCallBack(void)
 {
 	UTIL_SEQ_SetTask(1<<CFG_TASK_CONN_DEV_SELECT_ID, CFG_PRIO_NBR);
-
 }
 /* USER CODE END PFP */
 
@@ -961,6 +960,14 @@ static void Connect_Request_Selected_Addr( void )
   tBleStatus result;
   uint8_t a = buff_which[0]-48;
   uint8_t b = buff_which[1]-48;
+  if( (a < 0 || a > 9) && (b < 0 || b > 9) )
+  {
+	  APP_DBG_MSG("You have to write a correct number, try again \n\r");
+	  HW_UART_Receive_IT(hw_uart1, buff_which , sizeof(buff_which), rx_usartCallBack);
+
+  }
+  else
+  {
   uint8_t which_connect = (10*a) + b;
 
   APP_DBG_MSG("\r\n\r** CREATE CONNECTION TO SELECTED ADRESS **  \r\n\r");
@@ -999,6 +1006,7 @@ static void Connect_Request_Selected_Addr( void )
 
   /* USER CODE END Connect_Request_2 */
   return;
+  }
 }
 
 static void Switch_OFF_GPIO(){
