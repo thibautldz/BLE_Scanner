@@ -226,11 +226,12 @@ tBDAddr SERVER_REMOTE_BDADDR;
 
 typedef uint8_t ScanAddr[40][6];
 typedef int8_t ScanRSSI[40];
-typedef uint8_t ScanDATA[40][40];
+typedef uint32_t ScanDATA[40];
 
 ScanAddr SCANNING_REPORT = { 0 };
 ScanRSSI SCANNING_RSSI = { 0 };
-ScanDATA SCANNING_DATA = { 0 };
+ScanDATA SCANNING_NAME = { 0 };
+ScanDATA SCANNING_SHORT_NAME = { 0 };
 
 static uint8_t index_tab = 0;
 uint8_t index_tab_save;
@@ -414,24 +415,30 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             /* USER CODE BEGIN GAP_GENERAL_DISCOVERY_PROC */
             BSP_LED_Off(LED_BLUE);
             /* USER CODE END GAP_GENERAL_DISCOVERY_PROC */
-            APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n");
-            APP_DBG_MSG("          ------------------\n\r");
-            APP_DBG_MSG("        ||REPORT BLE SCANNER||\n\r");
-            APP_DBG_MSG("          ------------------\n\r");
-            APP_DBG_MSG(" N |      ADDRESS      |       RSSI     |\n\r");
+            APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n\r\n\r\n\r");
+            APP_DBG_MSG("                                                   ------------------\n\r");
+            APP_DBG_MSG("                                                 ||REPORT BLE SCANNER||\n\r");
+            APP_DBG_MSG("                                                   ------------------\n\r\n\r");
+            APP_DBG_MSG(" N |           SHORT NAME        |           COMP NAME        |             ADDRESS             |       RSSI     |\n\r");
 
             for(int j ; j < index_tab ; j++)
             {
+            	if (SCANNING_SHORT_NAME[j] == 0 || SCANNING_NAME[j] == 0)
+            	{
+            		break;
+            	}
             	APP_DBG_MSG("%2d | ", j);
+            	APP_DBG_MSG("  %17s         |", SCANNING_SHORT_NAME[j]);
+            	APP_DBG_MSG("  %17s         |   ", SCANNING_NAME[j]);
             	for (int k = 0; k < 6; k++)
             	{
-            		APP_DBG_MSG("%02X ", SCANNING_REPORT[j][k]);
+            		APP_DBG_MSG("%02X   ", SCANNING_REPORT[j][k]);
             	}
             	APP_DBG_MSG("|    %4i dBm    ", SCANNING_RSSI[j]);
             	APP_DBG_MSG("|\n\r");
             }
             index_tab_save = index_tab;
-            //index_tab = 0;
+            index_tab = 0;
 
             APP_DBG_MSG("To which one you want to connect ? \n\r");
 
@@ -602,6 +609,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           			}
           			if(inclus == 0)
           			{
+          				k = 0;
           				int8_t RSSI;
           				RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
           				SCANNING_RSSI[index_tab] = RSSI;
@@ -610,6 +618,28 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           					SCANNING_REPORT[index_tab][k] = le_advertising_event->Advertising_Report[0].Address[k];
           					//APP_DBG_MSG("%02X", table[index_tab][k]);
           				}
+          				 while(k < event_data_size)
+          				 {
+          				 adlength = adv_report_data[k];
+          				 adtype = adv_report_data[k + 1];
+          				   if(adtype == 0x08 || adtype == 0x09)
+          				   {
+          					   if(adtype == 0x08)
+          					   {
+          						   SCANNING_SHORT_NAME[index_tab] = (uint32_t)&(adv_report_data[k+2]);
+          					   }
+          					   if(adtype == 0x09)
+          					   {
+          						   SCANNING_NAME[index_tab] = (uint32_t)&(adv_report_data[k+2]);
+          					   }
+          				   }
+          				   else
+          				   {
+          					 SCANNING_SHORT_NAME[index_tab]=(uint32_t)"UNKNOWN";
+							 SCANNING_NAME[index_tab]=(uint32_t)"UNKNOWN";
+          				   }
+          				 k += adlength + 1;
+          				 }
           				index_tab++;
           			}
           			else
@@ -618,48 +648,6 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           			}
           		}
           	}
-          k = 0;
-
-          /* search AD TYPE 0x09 (Complete Local Name) */
-          /* search AD Type 0x02 (16 bits UUIDS) */
-          if (event_type == ADV_IND)
-          {
-
-            /* ISOLATION OF BD ADDRESS AND LOCAL NAME */
-
-            while(k < event_data_size)
-            {
-              adlength = adv_report_data[k];
-              adtype = adv_report_data[k + 1];
-              switch (adtype)
-              {
-                case AD_TYPE_FLAGS: /* now get flags */
-                /* USER CODE BEGIN AD_TYPE_FLAGS */
-
-                /* USER CODE END AD_TYPE_FLAGS */
-                  break;
-
-                case AD_TYPE_TX_POWER_LEVEL: /* Tx power level */
-                /* USER CODE BEGIN AD_TYPE_TX_POWER_LEVEL */
-
-                /* USER CODE END AD_TYPE_TX_POWER_LEVEL */
-                break;
-
-                case AD_TYPE_SERVICE_DATA: /* service data 16 bits */
-                  /* USER CODE BEGIN AD_TYPE_SERVICE_DATA */
-
-                  /* USER CODE END AD_TYPE_SERVICE_DATA */
-                  break;
-                default:
-                  /* USER CODE BEGIN adtype_default */
-
-                  /* USER CODE END adtype_default */
-                  break;
-              } /* end switch Data[k+adlength] */
-              k += adlength + 1;
-            } /* end while */
-
-          } /* end if ADV_IND */
         }
 
           break;
@@ -968,7 +956,7 @@ static void Connect_Request_Selected_Addr( void )
 	  HW_UART_Receive_IT(hw_uart1, buff_which , sizeof(buff_which), rx_usartCallBack);
 
   }
-  else if (which_connect > index_tab-1)
+  else if (which_connect > index_tab_save-1)
   {
 	  APP_DBG_MSG("You choose a number out of the list, try again \n\r");
 	  HW_UART_Receive_IT(hw_uart1, buff_which , sizeof(buff_which), rx_usartCallBack);
