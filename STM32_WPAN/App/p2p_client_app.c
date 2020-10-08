@@ -202,7 +202,7 @@ void P2PC_APP_Init(void)
   SVCCTL_RegisterCltHandler(Event_Handler);
 
 #if(CFG_DEBUG_APP_TRACE != 0)
-  APP_DBG_MSG("-- P2P CLIENT INITIALIZED \n");
+  APP_DBG_MSG("-- P2P CLIENT INITIALIZED \n\r");
 #endif
 
 /* USER CODE BEGIN P2PC_APP_Init_2 */
@@ -353,7 +353,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 if(uuid == P2P_SERVICE_UUID)
                 {
 #if(CFG_DEBUG_APP_TRACE != 0)
-                  APP_DBG_MSG("-- GATT : P2P_SERVICE_UUID FOUND - connection handle 0x%x \n", aP2PClientContext[index].connHandle);
+                  APP_DBG_MSG("-- GATT : P2P_SERVICE_UUID FOUND - connection handle 0x%x \n\r", aP2PClientContext[index].connHandle);
 #endif
 #if (UUID_128BIT_FORMAT==1)
                 aP2PClientContext[index].P2PServiceHandle = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-16]);
@@ -417,7 +417,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 if(uuid == P2P_WRITE_CHAR_UUID)
                 {
 #if(CFG_DEBUG_APP_TRACE != 0)
-                  APP_DBG_MSG("-- GATT : WRITE_UUID FOUND - connection handle 0x%x\n", aP2PClientContext[index].connHandle);
+                  APP_DBG_MSG("-- GATT : WRITE_UUID FOUND - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
 #endif
                   aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
                   aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
@@ -426,7 +426,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 else if(uuid == P2P_NOTIFY_CHAR_UUID)
                 {
 #if(CFG_DEBUG_APP_TRACE != 0)
-                  APP_DBG_MSG("-- GATT : NOTIFICATION_CHAR_UUID FOUND  - connection handle 0x%x\n", aP2PClientContext[index].connHandle);
+                  APP_DBG_MSG("-- GATT : NOTIFICATION_CHAR_UUID FOUND  - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
 #endif
                   aP2PClientContext[index].state = APP_BLE_DISCOVER_NOTIFICATION_CHAR_DESC;
                   aP2PClientContext[index].P2PNotificationCharHdle = handle;
@@ -481,7 +481,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 if(uuid == CLIENT_CHAR_CONFIG_DESCRIPTOR_UUID)
                 {
 #if(CFG_DEBUG_APP_TRACE != 0)
-                  APP_DBG_MSG("-- GATT : CLIENT_CHAR_CONFIG_DESCRIPTOR_UUID- connection handle 0x%x\n", aP2PClientContext[index].connHandle);
+                  APP_DBG_MSG("-- GATT : CLIENT_CHAR_CONFIG_DESCRIPTOR_UUID- connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
 #endif
                   if( aP2PClientContext[index].state == APP_BLE_DISCOVER_NOTIFICATION_CHAR_DESC)
                   {
@@ -532,7 +532,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
         {
           aci_gatt_proc_complete_event_rp0 *pr = (void*)blue_evt->data;
 #if(CFG_DEBUG_APP_TRACE != 0)
-          APP_DBG_MSG("-- GATT : EVT_BLUE_GATT_PROCEDURE_COMPLETE \n");
+          APP_DBG_MSG("-- GATT : EVT_BLUE_GATT_PROCEDURE_COMPLETE \n\r");
           APP_DBG_MSG("\n");
 #endif
 
@@ -660,8 +660,7 @@ void Button_Trigger_Received(void)
 {
 
 
-  APP_DBG_MSG("-- P2P APPLICATION CLIENT  : BUTTON PUSHED - WRITE TO SERVER \n ");
-  APP_DBG_MSG(" \n\r");
+  APP_DBG_MSG("-- P2P APPLICATION CLIENT  : BUTTON PUSHED - WRITE TO SERVER \n\r ");
   if(P2P_Client_App_Context.ButtonStatus.Button1==0x00){
     P2P_Client_App_Context.ButtonStatus.Button1=0x01;
   }else {

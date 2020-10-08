@@ -226,15 +226,17 @@ tBDAddr SERVER_REMOTE_BDADDR;
 
 typedef uint8_t ScanAddr[40][6];
 typedef int8_t ScanRSSI[40];
-typedef uint32_t ScanDATA[40];
+typedef uint8_t ScanDATA[40][30];
 
 ScanAddr SCANNING_REPORT = { 0 };
+ScanAddr SCANNING_REPORT_FOUND = { 0 };
 ScanRSSI SCANNING_RSSI = { 0 };
 ScanDATA SCANNING_NAME = { 0 };
-ScanDATA SCANNING_SHORT_NAME = { 0 };
+ScanDATA SCANNING_NAME_FOUND = { 0 };
 
 static uint8_t index_tab = 0;
 uint8_t index_tab_save;
+static int INDEX_FOUND = 0;
 uint8_t buff_which[2];
 uint8_t count_buffer=0;
 
@@ -381,7 +383,6 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
   hci_disconnection_complete_event_rp0 *cc = (void *) event_pckt->data;
   uint8_t result;
   uint8_t event_type, event_data_size;
-  int k = 0;
   uint8_t adtype, adlength;
 
   switch (event_pckt->evt)
@@ -415,21 +416,45 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             /* USER CODE BEGIN GAP_GENERAL_DISCOVERY_PROC */
             BSP_LED_Off(LED_BLUE);
             /* USER CODE END GAP_GENERAL_DISCOVERY_PROC */
-            APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n\r\n\r\n\r");
-            APP_DBG_MSG("                                                   ------------------\n\r");
-            APP_DBG_MSG("                                                 ||REPORT BLE SCANNER||\n\r");
-            APP_DBG_MSG("                                                   ------------------\n\r\n\r");
-            APP_DBG_MSG(" N |           SHORT NAME        |           COMP NAME        |             ADDRESS             |       RSSI     |\n\r");
-
-            for(int j ; j < index_tab ; j++)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// This part of the code find if a report_name match with an addr, if yes, the name is put in the array SCANNING_NAME
+// After, it's just for the layout for the terminal
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            for(int i = 0; i < INDEX_FOUND ; i++)
             {
-            	if (SCANNING_SHORT_NAME[j] == 0 || SCANNING_NAME[j] == 0)
+            	for(int y = 0 ; y < index_tab ; y++)
+            	{
+				   if( SCANNING_REPORT_FOUND[i][0] == SCANNING_REPORT[y][0]
+					&& SCANNING_REPORT_FOUND[i][1] == SCANNING_REPORT[y][1]
+					&& SCANNING_REPORT_FOUND[i][2] == SCANNING_REPORT[y][2]
+					&& SCANNING_REPORT_FOUND[i][3] == SCANNING_REPORT[y][3]
+					&& SCANNING_REPORT_FOUND[i][4] == SCANNING_REPORT[y][4]
+					&& SCANNING_REPORT_FOUND[i][5] == SCANNING_REPORT[y][5])
+					{
+					   for (int a = 0 ; a < 30 ; a++)
+					   {
+						   SCANNING_NAME[y][a]=SCANNING_NAME_FOUND[i][a];
+					   }
+					}
+            	}
+            }
+
+
+
+            APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n\r\n\r\n\r");
+            APP_DBG_MSG("                           ------------------\n\r");
+            APP_DBG_MSG("                         ||REPORT BLE SCANNER||\n\r");
+            APP_DBG_MSG("                           ------------------\n\r\n\r");
+            APP_DBG_MSG(" N |                         NAME                         |             ADDRESS             |       RSSI     |\n\r");
+
+            for(int j = 0; j < index_tab ; j++)
+            {
+            	if (SCANNING_NAME[j] == 0)
             	{
             		break;
             	}
-            	APP_DBG_MSG("%2d | ", j);
-            	APP_DBG_MSG("  %17s         |", SCANNING_SHORT_NAME[j]);
-            	APP_DBG_MSG("  %17s         |   ", SCANNING_NAME[j]);
+            	APP_DBG_MSG("%2d |", j);
+            	APP_DBG_MSG("%30s                        |   ", SCANNING_NAME[j]);
             	for (int k = 0; k < 6; k++)
             	{
             		APP_DBG_MSG("%02X   ", SCANNING_REPORT[j][k]);
@@ -439,6 +464,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             }
             index_tab_save = index_tab;
             index_tab = 0;
+            INDEX_FOUND = 0;
 
             APP_DBG_MSG("To which one you want to connect ? \n\r");
 
@@ -584,69 +610,84 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           RSSI = *(uint8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
           */
           adv_report_data = (uint8_t*)(&le_advertising_event->Advertising_Report[0].Length_Data) + 1;
+          uint8_t TAB_TEMPO[30]= "UNKNOWN";
 
-          int inclus = 0;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// This part of the code find during the scan the name of every devices, if not -> UNKNOWN
+// if a name device is found, his name is save in NAME_FOUND as well as his address in REPORT_FOUND
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+          int p = 0;
+          while(p < event_data_size)
+          {
+        	 adlength = adv_report_data[p];
+             adtype = adv_report_data[p + 1];
+             if(adtype == 0x09)
+             {
+            	 int inclu = 0;
+            	 for(int i = 0; i < INDEX_FOUND ; i++)
+            	 {
+            	 if(   le_advertising_event->Advertising_Report[0].Address[0] == SCANNING_REPORT_FOUND[i][0]
+					&& le_advertising_event->Advertising_Report[0].Address[1] == SCANNING_REPORT_FOUND[i][1]
+					&& le_advertising_event->Advertising_Report[0].Address[2] == SCANNING_REPORT_FOUND[i][2]
+					&& le_advertising_event->Advertising_Report[0].Address[3] == SCANNING_REPORT_FOUND[i][3]
+					&& le_advertising_event->Advertising_Report[0].Address[4] == SCANNING_REPORT_FOUND[i][4]
+					&& le_advertising_event->Advertising_Report[0].Address[5] == SCANNING_REPORT_FOUND[i][5])
+            	 {
+            		 inclu = 1;
+            	 }
+            	 }
+            	 if(inclu == 0)
+            	 {
+            		 for (int t = 0 ; t < adlength-1 ; t++)
+            		 {
+            			 SCANNING_NAME_FOUND[INDEX_FOUND][t] = (adv_report_data[p+2+t]);
+            		 }
+
+            	 	 for (int k = 0; k < 6; k++)
+            	 	 {
+            	 		 SCANNING_REPORT_FOUND[INDEX_FOUND][k] = le_advertising_event->Advertising_Report[0].Address[k];
+            	 	 }
+            	 	 INDEX_FOUND++;
+            	 }
+                 }
+          p += adlength + 1;
+          }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// This part of the code find the new devices addr save in SCANNING_REPORT as well as the RSSI in SCANNING_RSSI
+// We fix the maximum of devices at 40 and we check in a first time if the devices is not already in the REPORT array
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
           if (index_tab < 40)
           {
-        	  if (   le_advertising_event->Advertising_Report[0].Address[0] != 0
-          		  && le_advertising_event->Advertising_Report[0].Address[1] != 0
-            	  && le_advertising_event->Advertising_Report[0].Address[2] != 0
-          		  && le_advertising_event->Advertising_Report[0].Address[3] != 0
-          		  && le_advertising_event->Advertising_Report[0].Address[4] != 0
-          		  && le_advertising_event->Advertising_Report[0].Address[5] != 0)
-          		  {
-          			for(uint8_t i ; i < index_tab ; i++)
-          			{
-          				if (   le_advertising_event->Advertising_Report[0].Address[0] == SCANNING_REPORT[i][0]
-          					&& le_advertising_event->Advertising_Report[0].Address[1] == SCANNING_REPORT[i][1]
-          					&& le_advertising_event->Advertising_Report[0].Address[2] == SCANNING_REPORT[i][2]
-          					&& le_advertising_event->Advertising_Report[0].Address[3] == SCANNING_REPORT[i][3]
-          					&& le_advertising_event->Advertising_Report[0].Address[4] == SCANNING_REPORT[i][4]
-          					&& le_advertising_event->Advertising_Report[0].Address[5] == SCANNING_REPORT[i][5])
-          					{
-          						inclus = 1;
-          					}
-          			}
-          			if(inclus == 0)
-          			{
-          				k = 0;
-          				int8_t RSSI;
-          				RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
-          				SCANNING_RSSI[index_tab] = RSSI;
-          				for (int k = 0; k < 6; k++)
-          				{
-          					SCANNING_REPORT[index_tab][k] = le_advertising_event->Advertising_Report[0].Address[k];
-          					//APP_DBG_MSG("%02X", table[index_tab][k]);
-          				}
-          				 while(k < event_data_size)
-          				 {
-          				 adlength = adv_report_data[k];
-          				 adtype = adv_report_data[k + 1];
-          				   if(adtype == 0x08 || adtype == 0x09)
-          				   {
-          					   if(adtype == 0x08)
-          					   {
-          						   SCANNING_SHORT_NAME[index_tab] = (uint32_t)&(adv_report_data[k+2]);
-          					   }
-          					   if(adtype == 0x09)
-          					   {
-          						   SCANNING_NAME[index_tab] = (uint32_t)&(adv_report_data[k+2]);
-          					   }
-          				   }
-          				   else
-          				   {
-          					 SCANNING_SHORT_NAME[index_tab]=(uint32_t)"UNKNOWN";
-							 SCANNING_NAME[index_tab]=(uint32_t)"UNKNOWN";
-          				   }
-          				 k += adlength + 1;
-          				 }
-          				index_tab++;
-          			}
-          			else
-          			{
-          					//APP_DBG_MSG("already include");
-          			}
-          		}
+        	  int inclus = 0;
+        	  for(int i = 0; i < index_tab ; i++)
+        	  {
+        		  if(  le_advertising_event->Advertising_Report[0].Address[0] == SCANNING_REPORT[i][0]
+					&& le_advertising_event->Advertising_Report[0].Address[1] == SCANNING_REPORT[i][1]
+        	        && le_advertising_event->Advertising_Report[0].Address[2] == SCANNING_REPORT[i][2]
+        	  	    && le_advertising_event->Advertising_Report[0].Address[3] == SCANNING_REPORT[i][3]
+        	  	    && le_advertising_event->Advertising_Report[0].Address[4] == SCANNING_REPORT[i][4]
+        	  	    && le_advertising_event->Advertising_Report[0].Address[5] == SCANNING_REPORT[i][5])
+        	        {
+        			  inclus = 1;
+        	        }
+        	   }
+        	   if(inclus == 0)
+        	   {
+        		   int8_t RSSI;
+        		   RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
+        	       SCANNING_RSSI[index_tab] = RSSI;
+
+        	       for (int t = 0 ; t < 30 ; t++)
+        	       {
+        	    	   SCANNING_NAME[index_tab][t] = TAB_TEMPO[t];
+        	       }
+
+        	       for (int k = 0; k < 6; k++)
+        	       {
+        	    	   SCANNING_REPORT[index_tab][k] = le_advertising_event->Advertising_Report[0].Address[k];
+        	       }
+        	       index_tab++;
+        	   }
           	}
         }
 
