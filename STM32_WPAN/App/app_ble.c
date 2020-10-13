@@ -262,9 +262,9 @@ static void Scan_Request( void );
 static void Connect_Request( void );
 static void Connect_Request_Selected_Addr( void );
 static void Switch_OFF_GPIO( void );
-void rx_usartCallBack( void );
+static void rx_usartCallBack( void );
 /* USER CODE BEGIN PFP */
-void rx_usartCallBack(void)
+static void rx_usartCallBack( void )
 {
 	UTIL_SEQ_SetTask(1<<CFG_TASK_CONN_DEV_SELECT_ID, CFG_PRIO_NBR);
 }
@@ -442,9 +442,9 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
 
             APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n\r\n\r\n\r");
-            APP_DBG_MSG("                           ------------------\n\r");
-            APP_DBG_MSG("                         ||REPORT BLE SCANNER||\n\r");
-            APP_DBG_MSG("                           ------------------\n\r\n\r");
+            APP_DBG_MSG("                                                    ------------------\n\r");
+            APP_DBG_MSG("                                                  ||REPORT BLE SCANNER||\n\r");
+            APP_DBG_MSG("                                                    ------------------\n\r\n\r");
             APP_DBG_MSG(" N |                         NAME                         |             ADDRESS             |       RSSI     |\n\r");
 
             for(int j = 0; j < index_tab ; j++)
@@ -463,10 +463,10 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             	APP_DBG_MSG("|\n\r");
             }
             index_tab_save = index_tab;
-            index_tab = 0;
+            //index_tab = 0; disable -> find other devices if we reclick one the SW1
             INDEX_FOUND = 0;
 
-            APP_DBG_MSG("To which one you want to connect ? \n\r");
+            APP_DBG_MSG("To which one you want to connect ? Or reclick on the button to find more devices \n\r");
 
             HW_UART_Receive_IT(hw_uart1, buff_which , sizeof(buff_which), rx_usartCallBack);
 

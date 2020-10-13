@@ -165,6 +165,9 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event);
 static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload);
 static void Button_Trigger_Received( void );
 static void Update_Service( void );
+
+
+aci_att_read_by_group_type_resp_event_rp0 * advertising_event;
 /* USER CODE END PFP */
 
 /* Functions Definition ------------------------------------------------------*/
@@ -347,9 +350,34 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
           {
             idx = 4;
 #endif
-              for (i=0; i<numServ; i++)
+              for (int i=0; i<numServ; i++)
               {
+            	APP_DBG_MSG("\n\r\n\rSERVICE %hhu :\n\r",i);
+
                 uuid = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx]);
+                uint16_t avant = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx+2]);
+                uint16_t apres1 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-2]);
+                uint16_t apres2 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-4]);
+                uint16_t apres3 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-6]);
+                uint16_t apres4 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-8]);
+                uint16_t apres5 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-10]);
+                uint16_t apres6 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-12]);
+
+                APP_DBG_MSG("UUID : ");
+                APP_DBG_MSG("%x",avant);
+                APP_DBG_MSG("%x",uuid);
+                APP_DBG_MSG("-");
+                APP_DBG_MSG("%x",apres1);
+                APP_DBG_MSG("-");
+                APP_DBG_MSG("%x",apres2);
+                APP_DBG_MSG("-");
+                APP_DBG_MSG("%x",apres3);
+                APP_DBG_MSG("-");
+                APP_DBG_MSG("%x",apres4);
+                APP_DBG_MSG("%x",apres5);
+                APP_DBG_MSG("%x",apres6);
+
+
                 if(uuid == P2P_SERVICE_UUID)
                 {
 #if(CFG_DEBUG_APP_TRACE != 0)
@@ -408,6 +436,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
               while(pr->Data_Length > 0)
               {
                 uuid = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx]);
+
                 /* store the characteristic handle not the attribute handle */
 #if (UUID_128BIT_FORMAT==1)
                 handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-14]);
@@ -418,6 +447,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 {
 #if(CFG_DEBUG_APP_TRACE != 0)
                   APP_DBG_MSG("-- GATT : WRITE_UUID FOUND - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
+                  APP_DBG_MSG("UUID 1 : %x",uuid);
 #endif
                   aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
                   aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
@@ -427,6 +457,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 {
 #if(CFG_DEBUG_APP_TRACE != 0)
                   APP_DBG_MSG("-- GATT : NOTIFICATION_CHAR_UUID FOUND  - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
+                  APP_DBG_MSG("UUID 2 : %x",uuid);
 #endif
                   aP2PClientContext[index].state = APP_BLE_DISCOVER_NOTIFICATION_CHAR_DESC;
                   aP2PClientContext[index].P2PNotificationCharHdle = handle;
@@ -532,7 +563,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
         {
           aci_gatt_proc_complete_event_rp0 *pr = (void*)blue_evt->data;
 #if(CFG_DEBUG_APP_TRACE != 0)
-          APP_DBG_MSG("-- GATT : EVT_BLUE_GATT_PROCEDURE_COMPLETE \n\r");
+          APP_DBG_MSG("\n\r-- GATT : EVT_BLUE_GATT_PROCEDURE_COMPLETE \n\r");
           APP_DBG_MSG("\n");
 #endif
 
