@@ -239,6 +239,7 @@ uint8_t index_tab_save;
 static int INDEX_FOUND = 0;
 uint8_t buff_which[2];
 uint8_t count_buffer=0;
+#define COMPLETE_LOCAL_NAME		0x09
 
 P2PC_APP_ConnHandle_Not_evt_t handleNotification;
 
@@ -263,10 +264,47 @@ static void Connect_Request( void );
 static void Connect_Request_Selected_Addr( void );
 static void Switch_OFF_GPIO( void );
 static void rx_usartCallBack( void );
+static uint8_t contains_address(uint8_t * newAdd);
 /* USER CODE BEGIN PFP */
 static void rx_usartCallBack( void )
 {
 	UTIL_SEQ_SetTask(1<<CFG_TASK_CONN_DEV_SELECT_ID, CFG_PRIO_NBR);
+}
+
+static uint8_t contains_address(uint8_t * newAdd)
+{
+	uint8_t ret = 0;
+		for(int i = 0; i < index_tab ; i++)
+        {
+        		  if(  newAdd[0] == SCANNING_REPORT[i][0]
+				    && newAdd[1] == SCANNING_REPORT[i][1]
+				    && newAdd[2] == SCANNING_REPORT[i][2]
+				    && newAdd[3] == SCANNING_REPORT[i][3]
+				    && newAdd[4] == SCANNING_REPORT[i][4]
+				    && newAdd[5] == SCANNING_REPORT[i][5])
+        	        {
+        			  ret = 1;
+        	        }
+        }
+		return ret;
+}
+
+static uint8_t contains_address2(uint8_t * newAdd)
+{
+	uint8_t ret = 0;
+		for(int i = 0; i < index_tab ; i++)
+        {
+        		  if(  newAdd[0] == SCANNING_REPORT_FOUND[i][0]
+				    && newAdd[1] == SCANNING_REPORT_FOUND[i][1]
+				    && newAdd[2] == SCANNING_REPORT_FOUND[i][2]
+				    && newAdd[3] == SCANNING_REPORT_FOUND[i][3]
+				    && newAdd[4] == SCANNING_REPORT_FOUND[i][4]
+				    && newAdd[5] == SCANNING_REPORT_FOUND[i][5])
+        	        {
+        			  ret = 1;
+        	        }
+        }
+		return ret;
 }
 /* USER CODE END PFP */
 
@@ -442,10 +480,10 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
 
             APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n\r\n\r\n\r");
-            APP_DBG_MSG("                                                    ------------------\n\r");
-            APP_DBG_MSG("                                                  ||REPORT BLE SCANNER||\n\r");
-            APP_DBG_MSG("                                                    ------------------\n\r\n\r");
-            APP_DBG_MSG(" N |                         NAME                         |             ADDRESS             |       RSSI     |\n\r");
+            APP_DBG_MSG("\t\t\t\t\t\t  ------------------\n\r");
+            APP_DBG_MSG("\t\t\t\t\t\t||REPORT BLE SCANNER||\n\r");
+            APP_DBG_MSG("\t\t\t\t\t\t  ------------------\n\r\n\r");
+            APP_DBG_MSG(" N | \t\t\t     NAME   \t\t\t  |      \t ADDRESS \t    |      RSSI      |\n\r");
 
             for(int j = 0; j < index_tab ; j++)
             {
@@ -621,23 +659,11 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           {
         	 adlength = adv_report_data[p];
              adtype = adv_report_data[p + 1];
-             if(adtype == 0x09)
+
+             if(adtype == COMPLETE_LOCAL_NAME)
              {
-            	 int inclu = 0;
-            	 for(int i = 0; i < INDEX_FOUND ; i++)
-            	 {
-            	 if(   le_advertising_event->Advertising_Report[0].Address[0] == SCANNING_REPORT_FOUND[i][0]
-					&& le_advertising_event->Advertising_Report[0].Address[1] == SCANNING_REPORT_FOUND[i][1]
-					&& le_advertising_event->Advertising_Report[0].Address[2] == SCANNING_REPORT_FOUND[i][2]
-					&& le_advertising_event->Advertising_Report[0].Address[3] == SCANNING_REPORT_FOUND[i][3]
-					&& le_advertising_event->Advertising_Report[0].Address[4] == SCANNING_REPORT_FOUND[i][4]
-					&& le_advertising_event->Advertising_Report[0].Address[5] == SCANNING_REPORT_FOUND[i][5])
-            	 {
-            		 inclu = 1;
-            	 }
-            	 }
-            	 if(inclu == 0)
-            	 {
+            	if(!contains_address2(le_advertising_event->Advertising_Report[0].Address))
+            	{
             		 for (int t = 0 ; t < adlength-1 ; t++)
             		 {
             			 SCANNING_NAME_FOUND[INDEX_FOUND][t] = (adv_report_data[p+2+t]);
@@ -649,7 +675,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             	 	 }
             	 	 INDEX_FOUND++;
             	 }
-                 }
+             }
           p += adlength + 1;
           }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -658,20 +684,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
           if (index_tab < 40)
           {
-        	  int inclus = 0;
-        	  for(int i = 0; i < index_tab ; i++)
-        	  {
-        		  if(  le_advertising_event->Advertising_Report[0].Address[0] == SCANNING_REPORT[i][0]
-					&& le_advertising_event->Advertising_Report[0].Address[1] == SCANNING_REPORT[i][1]
-        	        && le_advertising_event->Advertising_Report[0].Address[2] == SCANNING_REPORT[i][2]
-        	  	    && le_advertising_event->Advertising_Report[0].Address[3] == SCANNING_REPORT[i][3]
-        	  	    && le_advertising_event->Advertising_Report[0].Address[4] == SCANNING_REPORT[i][4]
-        	  	    && le_advertising_event->Advertising_Report[0].Address[5] == SCANNING_REPORT[i][5])
-        	        {
-        			  inclus = 1;
-        	        }
-        	   }
-        	   if(inclus == 0)
+        	   if(!contains_address(le_advertising_event->Advertising_Report[0].Address))
         	   {
         		   int8_t RSSI;
         		   RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);

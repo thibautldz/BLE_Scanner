@@ -105,6 +105,20 @@ typedef struct
 
 }P2P_ClientContext_t;
 
+enum UUID_PROPERTIES
+{
+ UUID_BROADCAST	         =   (0x01),
+ UUID_READ               =   (0x02),
+ UUID_WRITE_WNR          =   (0x04),
+ UUID_READ_WRITE_WNR 	 =   (0x06),
+ UUID_WRITE              =   (0x08),
+ UUID_READ_WRITE		 =   (0x0A),
+ UUID_NOTIFY		     =   (0x10),
+ UUID_INDICATES	   		 =   (0x20)
+};
+
+uint8_t INDEX_DISC = 0;
+
 /* USER CODE BEGIN PTD */
 typedef struct{
   uint8_t                                     Device_Led_Selection;
@@ -308,6 +322,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 
           uint8_t index;
           handle = pr->Connection_Handle;
+          INDEX_DISC = 0;
           index = 0;
           while((index < BLE_CFG_CLT_MAX_NBR_CB) &&
                   (aP2PClientContext[index].state != APP_BLE_IDLE))
@@ -352,7 +367,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 #endif
               for (int i=0; i<numServ; i++)
               {
-            	APP_DBG_MSG("\n\r\n\rSERVICE %hhu :\n\r",i);
+            	APP_DBG_MSG("\n\r\n\rSERVICE :\n\r");
 
                 uuid = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx]);
                 uint16_t avant = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx+2]);
@@ -378,10 +393,10 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 APP_DBG_MSG("%x",apres6);
 
 
-                if(uuid == P2P_SERVICE_UUID)
-                {
+               // if(uuid == P2P_SERVICE_UUID)
+                //{
 #if(CFG_DEBUG_APP_TRACE != 0)
-                  APP_DBG_MSG("-- GATT : P2P_SERVICE_UUID FOUND - connection handle 0x%x \n\r", aP2PClientContext[index].connHandle);
+                 // APP_DBG_MSG("-- GATT : P2P_SERVICE_UUID FOUND - connection handle 0x%x \n\r", aP2PClientContext[index].connHandle);
 #endif
 #if (UUID_128BIT_FORMAT==1)
                 aP2PClientContext[index].P2PServiceHandle = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-16]);
@@ -390,8 +405,8 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 aP2PClientContext[index].P2PServiceHandle = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-4]);
                 aP2PClientContext[index].P2PServiceEndHandle = UNPACK_2_BYTE_PARAMETER (&pr->Attribute_Data_List[idx-2]);
 #endif
-                  aP2PClientContext[index].state = APP_BLE_DISCOVER_CHARACS ;
-                }
+                aP2PClientContext[index].state = APP_BLE_DISCOVER_CHARACS ;
+                //}
                 idx += 6;
               }
             }
@@ -419,7 +434,6 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
           while((index < BLE_CFG_CLT_MAX_NBR_CB) &&
                   (aP2PClientContext[index].connHandle != pr->Connection_Handle))
             index++;
-
           if(index < BLE_CFG_CLT_MAX_NBR_CB)
           {
 
@@ -443,25 +457,110 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 #else
                 handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-2]);
 #endif
-                if(uuid == P2P_WRITE_CHAR_UUID)
-                {
-#if(CFG_DEBUG_APP_TRACE != 0)
-                  APP_DBG_MSG("-- GATT : WRITE_UUID FOUND - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
-                  APP_DBG_MSG("UUID 1 : %x",uuid);
-#endif
-                  aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
-                  aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
-                }
+                //if(uuid == P2P_WRITE_CHAR_UUID)
+               // {
+                 // APP_DBG_MSG("\n\r-- GATT : UUID FOUND - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
+                  uint16_t avant2 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx+4]);
+                  uint16_t avant1 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx+2]);
+                  uint16_t apres1 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-2]);
+                  uint16_t apres2 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-4]);
+                  uint16_t apres3 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-6]);
+                  uint16_t apres4 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-8]);
+                  uint16_t apres5 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-10]);
+                  uint16_t apres6 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-12]);
+                  uint8_t Property = pr->Handle_Value_Pair_Data[idx-15];
 
-                else if(uuid == P2P_NOTIFY_CHAR_UUID)
-                {
-#if(CFG_DEBUG_APP_TRACE != 0)
-                  APP_DBG_MSG("-- GATT : NOTIFICATION_CHAR_UUID FOUND  - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
-                  APP_DBG_MSG("UUID 2 : %x",uuid);
-#endif
-                  aP2PClientContext[index].state = APP_BLE_DISCOVER_NOTIFICATION_CHAR_DESC;
-                  aP2PClientContext[index].P2PNotificationCharHdle = handle;
-                }
+                  switch(Property)
+                  {
+                  case(UUID_READ) :
+						APP_DBG_MSG("UUID : ");
+                  	  	APP_DBG_MSG("%x",avant2);
+				        APP_DBG_MSG("%x",avant1);
+				        APP_DBG_MSG("%x",uuid);
+				        APP_DBG_MSG("-");
+				        APP_DBG_MSG("%x",apres1);
+				        APP_DBG_MSG("-");
+				        APP_DBG_MSG("%x",apres2);
+				        APP_DBG_MSG("-");
+				        APP_DBG_MSG("%x",apres3);
+				        APP_DBG_MSG("-");
+				        APP_DBG_MSG("%x",apres4);
+				        APP_DBG_MSG("%x",apres5);
+				        APP_DBG_MSG("%x",apres6);
+				        APP_DBG_MSG("   READ\n\r");
+				        index++;
+				  break;
+
+                  case(UUID_WRITE_WNR) :
+
+				  break;
+
+                  case(UUID_READ_WRITE_WNR) :
+						APP_DBG_MSG("UUID : ");
+                        APP_DBG_MSG("%x",avant2);
+                  		APP_DBG_MSG("%x",avant1);
+		                APP_DBG_MSG("%x",uuid);
+		                APP_DBG_MSG("-");
+		                APP_DBG_MSG("%x",apres1);
+		                APP_DBG_MSG("-");
+		                APP_DBG_MSG("%x",apres2);
+		                APP_DBG_MSG("-");
+		                APP_DBG_MSG("%x",apres3);
+		                APP_DBG_MSG("-");
+		                APP_DBG_MSG("%x",apres4);
+		                APP_DBG_MSG("%x",apres5);
+		                APP_DBG_MSG("%x",apres6);
+		                APP_DBG_MSG("   READ/WRITE WHITHOUT RESPONSE\n\r");
+		                index++;
+		                //aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
+		                //aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
+                  break;
+
+                  case(UUID_READ_WRITE) :
+
+				  break;
+
+                  case(UUID_WRITE) :
+
+				  break;
+
+                  case(UUID_NOTIFY) :
+						APP_DBG_MSG("UUID : ");
+                  	    APP_DBG_MSG("%x",avant2);
+                  		APP_DBG_MSG("%x",avant1);
+                  	    APP_DBG_MSG("%x",uuid);
+				        APP_DBG_MSG("-");
+				        APP_DBG_MSG("%x",apres1);
+				        APP_DBG_MSG("-");
+				        APP_DBG_MSG("%x",apres2);
+				        APP_DBG_MSG("-");
+				        APP_DBG_MSG("%x",apres3);
+				        APP_DBG_MSG("-");
+				        APP_DBG_MSG("%x",apres4);
+				        APP_DBG_MSG("%x",apres5);
+				        APP_DBG_MSG("%x",apres6);
+				        APP_DBG_MSG("   NOTIFY\n\r");
+				        index++;
+				  break;
+
+                  case(UUID_INDICATES) :
+
+				  break;
+
+                  default :
+                  break;
+                  }
+ //                 aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
+ //                 aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
+//                }
+//
+//                else if(uuid == P2P_NOTIFY_CHAR_UUID)
+//                {
+//                  APP_DBG_MSG("-- GATT : NOTIFICATION_CHAR_UUID FOUND  - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
+//                  APP_DBG_MSG("UUID 2 : %x",uuid);
+//                  aP2PClientContext[index].state = APP_BLE_DISCOVER_NOTIFICATION_CHAR_DESC;
+//                  aP2PClientContext[index].P2PNotificationCharHdle = handle;
+//                }
 #if (UUID_128BIT_FORMAT==1)
                 pr->Data_Length -= 21;
                 idx += 21;
@@ -707,6 +806,8 @@ void Update_Service()
 {
   uint16_t enable = 0x0001;
   uint16_t disable = 0x0000;
+  uint16_t led_on = 0x0101;
+
 
   uint8_t index;
 
@@ -720,20 +821,25 @@ void Update_Service()
     {
 
       case APP_BLE_DISCOVER_SERVICES:
-        APP_DBG_MSG("P2P_DISCOVER_SERVICES\n");
+        APP_DBG_MSG("P2P_DISCOVER_SERVICES\n\r");
         break;
       case APP_BLE_DISCOVER_CHARACS:
-        APP_DBG_MSG("* GATT : Discover P2P Characteristics\n");
+    	INDEX_DISC++;
+    	if(INDEX_DISC < 2)
+    	{
+        APP_DBG_MSG("* GATT : Discover P2P Characteristics\n\r");
         aci_gatt_disc_all_char_of_service(aP2PClientContext[index].connHandle,
                                           aP2PClientContext[index].P2PServiceHandle,
                                           aP2PClientContext[index].P2PServiceEndHandle);
+    	}
 
         break;
       case APP_BLE_DISCOVER_WRITE_DESC: /* Not Used - No decriptor */
         APP_DBG_MSG("* GATT : Discover Descriptor of TX - Write Characteritic\n");
-        aci_gatt_disc_all_char_desc(aP2PClientContext[index].connHandle,
-                                    aP2PClientContext[index].P2PWriteToServerCharHdle,
-                                    aP2PClientContext[index].P2PWriteToServerCharHdle+2);
+        aci_gatt_write_char_desc(aP2PClientContext[index].connHandle,
+                                         aP2PClientContext[index].P2PNotificationDescHandle,
+                                         2,
+                                         (uint8_t *)&led_on);
 
         break;
       case APP_BLE_DISCOVER_NOTIFICATION_CHAR_DESC:
