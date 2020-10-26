@@ -235,8 +235,8 @@ ScanDATA SCANNING_NAME = { 0 };
 ScanDATA SCANNING_NAME_FOUND = { 0 };
 
 static uint8_t index_tab = 0;
-uint8_t index_tab_save;
 static int INDEX_FOUND = 0;
+uint8_t index_tab_save = 0;
 uint8_t buff_which[2];
 uint8_t count_buffer=0;
 #define COMPLETE_LOCAL_NAME		0x09
@@ -264,6 +264,7 @@ static void Connect_Request( void );
 static void Connect_Request_Selected_Addr( void );
 static void Switch_OFF_GPIO( void );
 static void rx_usartCallBack( void );
+static void start_timer( void );
 static uint8_t contains_address(uint8_t * newAdd);
 /* USER CODE BEGIN PFP */
 static void rx_usartCallBack( void )
@@ -493,7 +494,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             	}
             	APP_DBG_MSG("%2d |", j);
             	APP_DBG_MSG("%30s                        |   ", SCANNING_NAME[j]);
-            	for (int k = 0; k < 6; k++)
+            	for (int k = 5; k >= 0; k--)
             	{
             		APP_DBG_MSG("%02X   ", SCANNING_REPORT[j][k]);
             	}
@@ -501,7 +502,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             	APP_DBG_MSG("|\n\r");
             }
             index_tab_save = index_tab;
-            //index_tab = 0; disable -> find other devices if we reclick one the SW1
+            index_tab = 0;
             INDEX_FOUND = 0;
 
             APP_DBG_MSG("To which one you want to connect ? Or reclick on the button to find more devices \n\r");
@@ -690,7 +691,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
         		   RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
         	       SCANNING_RSSI[index_tab] = RSSI;
 
-        	       for (int t = 0 ; t < 30 ; t++)
+        	       for (int t = 0 ; t < 32 ; t++)
         	       {
         	    	   SCANNING_NAME[index_tab][t] = TAB_TEMPO[t];
         	       }
@@ -855,7 +856,7 @@ static void Ble_Tl_Init( void )
   {
     const char *name = "P2P_C";
 
-    aci_gap_init(role, 0,
+    aci_gap_init(0x08, 0,
                  APPBLE_GAP_DEVICE_NAME_LENGTH,
                  &gap_service_handle, &gap_dev_name_char_handle, &gap_appearance_char_handle);
 
@@ -916,6 +917,12 @@ static void Ble_Tl_Init( void )
 
 }
 
+static void start_timer( void )
+{
+	HAL_Delay(10000);
+	blue_evt->ecode = EVT_BLUE_GAP_PROCEDURE_COMPLETE;
+}
+
 static void Scan_Request( void )
 {
   /* USER CODE BEGIN Scan_Request_1 */
@@ -927,11 +934,12 @@ static void Scan_Request( void )
     /* USER CODE BEGIN APP_BLE_CONNECTED_CLIENT */
     BSP_LED_On(LED_BLUE);
     /* USER CODE END APP_BLE_CONNECTED_CLIENT */
-    result = aci_gap_start_general_discovery_proc(SCAN_P, SCAN_L, PUBLIC_ADDR, 1);
+    result = aci_gap_start_observation_proc(SCAN_P, SCAN_L,0x00,  PUBLIC_ADDR, 0, 0x0);
+    //result = aci_gap_start_general_discovery_proc(SCAN_P, SCAN_L, PUBLIC_ADDR, 1);
     if (result == BLE_STATUS_SUCCESS)
     {
     /* USER CODE BEGIN BLE_SCAN_SUCCESS */
-
+    	start_timer();
     /* USER CODE END BLE_SCAN_SUCCESS */
       APP_DBG_MSG(" \r\n\r** START GENERAL DISCOVERY (SCAN) **  \r\n\r");
     }
