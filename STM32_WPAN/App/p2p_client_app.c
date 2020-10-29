@@ -116,7 +116,7 @@ enum UUID_PROPERTIES
  UUID_NOTIFY		     =   (0x10),
  UUID_INDICATES	   		 =   (0x20)
 };
-
+uint8_t uuid_byte_one = 0;
 uint8_t INDEX_DISC = 0;
 
 /* USER CODE BEGIN PTD */
@@ -194,7 +194,7 @@ static void display_UUID( uint8_t * package, uint8_t idx )
 {
 	uint16_t avant1 = UNPACK_2_BYTE_PARAMETER(&package[idx+2]);
 	uint16_t apres1 = UNPACK_2_BYTE_PARAMETER(&package[idx-2]);
-	uint16_t uuid = UNPACK_2_BYTE_PARAMETER(&package[idx]);
+	uint16_t uuiddisp = UNPACK_2_BYTE_PARAMETER(&package[idx+1]);
 	uint16_t apres2 = UNPACK_2_BYTE_PARAMETER(&package[idx-4]);
 	uint16_t apres3 = UNPACK_2_BYTE_PARAMETER(&package[idx-6]);
 	uint16_t apres4 = UNPACK_2_BYTE_PARAMETER(&package[idx-8]);
@@ -203,7 +203,7 @@ static void display_UUID( uint8_t * package, uint8_t idx )
 
 	 APP_DBG_MSG("UUID : ");
 	 APP_DBG_MSG("%x",avant1);
-	 APP_DBG_MSG("%x",uuid);
+	 APP_DBG_MSG("%x",uuiddisp);
 	 APP_DBG_MSG("-");
 	 APP_DBG_MSG("%x",apres1);
 	 APP_DBG_MSG("-");
@@ -396,10 +396,11 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
             	APP_DBG_MSG("\n\r\n\rSERVICE :\n\r");
 
                 uuid = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx]);
+                uuid_byte_one = pr->Attribute_Data_List[idx+1];
                 display_UUID(pr->Attribute_Data_List, idx);
 
 
-               // if(uuid == P2P_SERVICE_UUID)
+                // if(uuid == P2P_SERVICE_UUID)
                 //{
 #if(CFG_DEBUG_APP_TRACE != 0)
                  // APP_DBG_MSG("-- GATT : P2P_SERVICE_UUID FOUND - connection handle 0x%x \n\r", aP2PClientContext[index].connHandle);
@@ -455,7 +456,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
               pr->Data_Length -= 1;
               while(pr->Data_Length > 0)
               {
-                uuid = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx]);
+                uuid = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx+1]);
 
                 /* store the characteristic handle not the attribute handle */
 #if (UUID_128BIT_FORMAT==1)
@@ -467,7 +468,8 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                // {
                  // APP_DBG_MSG("\n\r-- GATT : UUID FOUND - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
                   uint8_t Property = pr->Handle_Value_Pair_Data[idx-15];
-
+                  if(uuid_byte_one == pr->Handle_Value_Pair_Data[idx])
+                  {
                   switch(Property)
                   {
                   case(UUID_READ) :
@@ -518,6 +520,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 	  index++;
                   break;
                   }
+                }
  //                 aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
  //                 aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
 //                }

@@ -224,15 +224,19 @@ static const uint8_t BLE_CFG_ER_VALUE[16] = CFG_BLE_ERK;
 
 tBDAddr SERVER_REMOTE_BDADDR;
 
-typedef uint8_t ScanAddr[40][6];
-typedef int8_t ScanRSSI[40];
-typedef uint8_t ScanDATA[40][30];
+#define SCAN_REPORT_SIZE		40
+#define MAX_ADV_DATA_LEN		32
+#define BLE_ADD_LEN		        6
+typedef struct
+{
+uint8_t ScanAddr[BLE_ADD_LEN];
+int8_t ScanRSSI;
+uint8_t ScanDATA[MAX_ADV_DATA_LEN];
+} Scan_report_t;
 
-ScanAddr SCANNING_REPORT = { 0 };
-ScanAddr SCANNING_REPORT_FOUND = { 0 };
-ScanRSSI SCANNING_RSSI = { 0 };
-ScanDATA SCANNING_NAME = { 0 };
-ScanDATA SCANNING_NAME_FOUND = { 0 };
+Scan_report_t scan_report[SCAN_REPORT_SIZE];
+Scan_report_t scan_report_naming[SCAN_REPORT_SIZE];
+
 
 static uint8_t index_tab = 0;
 static int INDEX_FOUND = 0;
@@ -265,48 +269,46 @@ static void Connect_Request_Selected_Addr( void );
 static void Switch_OFF_GPIO( void );
 static void rx_usartCallBack( void );
 static void start_timer( void );
-static uint8_t contains_address(uint8_t * newAdd);
+static uint8_t contains_address(uint8_t * newAdd, uint8_t structure);
 /* USER CODE BEGIN PFP */
 static void rx_usartCallBack( void )
 {
 	UTIL_SEQ_SetTask(1<<CFG_TASK_CONN_DEV_SELECT_ID, CFG_PRIO_NBR);
 }
 
-static uint8_t contains_address(uint8_t * newAdd)
+static uint8_t contains_address(uint8_t * newAdd, uint8_t structure)// 0 -> scan_report / 1-> scan_report_name
 {
 	uint8_t ret = 0;
 		for(int i = 0; i < index_tab ; i++)
         {
-        		  if(  newAdd[0] == SCANNING_REPORT[i][0]
-				    && newAdd[1] == SCANNING_REPORT[i][1]
-				    && newAdd[2] == SCANNING_REPORT[i][2]
-				    && newAdd[3] == SCANNING_REPORT[i][3]
-				    && newAdd[4] == SCANNING_REPORT[i][4]
-				    && newAdd[5] == SCANNING_REPORT[i][5])
+			if(structure == 0)
+			{
+        		  if(  newAdd[0] == scan_report->ScanAddr[i][0]
+				    && newAdd[1] == scan_report->ScanAddr[i][1]
+				    && newAdd[2] == scan_report->ScanAddr[i][2]
+				    && newAdd[3] == scan_report->ScanAddr[i][3]
+				    && newAdd[4] == scan_report->ScanAddr[i][4]
+				    && newAdd[5] == scan_report->ScanAddr[i][5])
         	        {
         			  ret = 1;
         	        }
+			}
+			else if (structure == 1)
+			{
+				 if(  newAdd[0] == scan_report_naming->ScanAddr[i][0]
+				   && newAdd[1] == scan_report_naming->ScanAddr[i][1]
+				   && newAdd[2] == scan_report_naming->ScanAddr[i][2]
+				   && newAdd[3] == scan_report_naming->ScanAddr[i][3]
+				   && newAdd[4] == scan_report_naming->ScanAddr[i][4]
+				   && newAdd[5] == scan_report_naming->ScanAddr[i][5])
+				   {
+				      ret = 1;
+				   }
+			}
         }
 		return ret;
 }
 
-static uint8_t contains_address2(uint8_t * newAdd)
-{
-	uint8_t ret = 0;
-		for(int i = 0; i < index_tab ; i++)
-        {
-        		  if(  newAdd[0] == SCANNING_REPORT_FOUND[i][0]
-				    && newAdd[1] == SCANNING_REPORT_FOUND[i][1]
-				    && newAdd[2] == SCANNING_REPORT_FOUND[i][2]
-				    && newAdd[3] == SCANNING_REPORT_FOUND[i][3]
-				    && newAdd[4] == SCANNING_REPORT_FOUND[i][4]
-				    && newAdd[5] == SCANNING_REPORT_FOUND[i][5])
-        	        {
-        			  ret = 1;
-        	        }
-        }
-		return ret;
-}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -463,16 +465,16 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             {
             	for(int y = 0 ; y < index_tab ; y++)
             	{
-				   if( SCANNING_REPORT_FOUND[i][0] == SCANNING_REPORT[y][0]
-					&& SCANNING_REPORT_FOUND[i][1] == SCANNING_REPORT[y][1]
-					&& SCANNING_REPORT_FOUND[i][2] == SCANNING_REPORT[y][2]
-					&& SCANNING_REPORT_FOUND[i][3] == SCANNING_REPORT[y][3]
-					&& SCANNING_REPORT_FOUND[i][4] == SCANNING_REPORT[y][4]
-					&& SCANNING_REPORT_FOUND[i][5] == SCANNING_REPORT[y][5])
+				   if( scan_report_naming->ScanAddr[i][0] == scan_report->ScanAddr[y][0]
+					&& scan_report_naming->ScanAddr[i][1] == scan_report->ScanAddr[y][1]
+					&& scan_report_naming->ScanAddr[i][2] == scan_report->ScanAddr[y][2]
+					&& scan_report_naming->ScanAddr[i][3] == scan_report->ScanAddr[y][3]
+					&& scan_report_naming->ScanAddr[i][4] == scan_report->ScanAddr[y][4]
+					&& scan_report_naming->ScanAddr[i][5] == scan_report->ScanAddr[y][5])
 					{
-					   for (int a = 0 ; a < 30 ; a++)
+					   for (int a = 0 ; a < MAX_ADV_DATA_LEN ; a++)
 					   {
-						   SCANNING_NAME[y][a]=SCANNING_NAME_FOUND[i][a];
+						   scan_report->ScanDATA[y][a] = scan_report_naming->ScanDATA[i][a];
 					   }
 					}
             	}
@@ -488,24 +490,24 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
             for(int j = 0; j < index_tab ; j++)
             {
-            	if (SCANNING_NAME[j] == 0)
+            	if (scan_report->ScanDATA[j] == 0)
             	{
             		break;
             	}
             	APP_DBG_MSG("%2d |", j);
-            	APP_DBG_MSG("%30s                        |   ", SCANNING_NAME[j]);
+            	APP_DBG_MSG("%30s                        |   ", scan_report->ScanDATA[j]);
             	for (int k = 5; k >= 0; k--)
             	{
-            		APP_DBG_MSG("%02X   ", SCANNING_REPORT[j][k]);
+            		APP_DBG_MSG("%02X   ", scan_report->ScanAddr[j][k]);
             	}
-            	APP_DBG_MSG("|    %4i dBm    ", SCANNING_RSSI[j]);
+            	APP_DBG_MSG("|    %4i dBm    ", scan_report->ScanRSSI[j]);
             	APP_DBG_MSG("|\n\r");
             }
             index_tab_save = index_tab;
             index_tab = 0;
             INDEX_FOUND = 0;
 
-            APP_DBG_MSG("To which one you want to connect ? Or reclick on the button to find more devices \n\r");
+            APP_DBG_MSG("To which one you want to connect ? \n\r");
 
             HW_UART_Receive_IT(hw_uart1, buff_which , sizeof(buff_which), rx_usartCallBack);
 
@@ -649,7 +651,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           RSSI = *(uint8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
           */
           adv_report_data = (uint8_t*)(&le_advertising_event->Advertising_Report[0].Length_Data) + 1;
-          uint8_t TAB_TEMPO[30]= "UNKNOWN";
+          uint8_t TAB_UNKNOWN[MAX_ADV_DATA_LEN]= "UNKNOWN";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // This part of the code find during the scan the name of every devices, if not -> UNKNOWN
@@ -663,16 +665,16 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
              if(adtype == COMPLETE_LOCAL_NAME)
              {
-            	if(!contains_address2(le_advertising_event->Advertising_Report[0].Address))
+            	if(!contains_address(le_advertising_event->Advertising_Report[0].Address,1))
             	{
             		 for (int t = 0 ; t < adlength-1 ; t++)
             		 {
-            			 SCANNING_NAME_FOUND[INDEX_FOUND][t] = (adv_report_data[p+2+t]);
+            			 scan_report_naming->ScanDATA[t] = (adv_report_data[p+2+t]);
             		 }
 
             	 	 for (int k = 0; k < 6; k++)
             	 	 {
-            	 		 SCANNING_REPORT_FOUND[INDEX_FOUND][k] = le_advertising_event->Advertising_Report[0].Address[k];
+            	 		scan_report_naming->ScanAddr[INDEX_FOUND][k] = le_advertising_event->Advertising_Report[0].Address[k];
             	 	 }
             	 	 INDEX_FOUND++;
             	 }
@@ -685,20 +687,20 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
           if (index_tab < 40)
           {
-        	   if(!contains_address(le_advertising_event->Advertising_Report[0].Address))
+        	   if(!contains_address(le_advertising_event->Advertising_Report[0].Address,0))
         	   {
         		   int8_t RSSI;
         		   RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
-        	       SCANNING_RSSI[index_tab] = RSSI;
+        		   scan_report->ScanRSSI[t] = RSSI;
 
         	       for (int t = 0 ; t < 32 ; t++)
         	       {
-        	    	   SCANNING_NAME[index_tab][t] = TAB_TEMPO[t];
+        	    	   scan_report->ScanDATA[t] = TAB_UNKNOWN[t];
         	       }
 
         	       for (int k = 0; k < 6; k++)
         	       {
-        	    	   SCANNING_REPORT[index_tab][k] = le_advertising_event->Advertising_Report[0].Address[k];
+        	    	   scan_report->ScanAddr[index_tab][k] = &le_advertising_event->Advertising_Report[0].Address[k];
         	       }
         	       index_tab++;
         	   }
@@ -1033,7 +1035,7 @@ static void Connect_Request_Selected_Addr( void )
   {
     result = aci_gap_create_connection(SCAN_P,
                                        SCAN_L,
-                                       PUBLIC_ADDR, SCANNING_REPORT[which_connect],
+                                       PUBLIC_ADDR, scan_report->ScanAddr[which_connect],
                                        PUBLIC_ADDR,
                                        CONN_P1,
                                        CONN_P2,
