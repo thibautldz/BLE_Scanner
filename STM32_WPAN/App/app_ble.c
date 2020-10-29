@@ -856,7 +856,7 @@ static void Ble_Tl_Init( void )
   {
     const char *name = "P2P_C";
 
-    aci_gap_init(0x08, 0,
+    aci_gap_init(role, 0,
                  APPBLE_GAP_DEVICE_NAME_LENGTH,
                  &gap_service_handle, &gap_dev_name_char_handle, &gap_appearance_char_handle);
 
@@ -917,11 +917,12 @@ static void Ble_Tl_Init( void )
 
 }
 
-static void start_timer( void )
-{
-	HAL_Delay(10000);
-	blue_evt->ecode = EVT_BLUE_GAP_PROCEDURE_COMPLETE;
-}
+//static void start_timer( void )
+//{
+//	HAL_Delay(10000);
+//	BSP_LED_Off(LED_BLUE);
+//	aci_gap_terminate(BleApplicationContext.BleApplicationContext_legacy.connectionHandle,1);
+//}
 
 static void Scan_Request( void )
 {
@@ -934,12 +935,12 @@ static void Scan_Request( void )
     /* USER CODE BEGIN APP_BLE_CONNECTED_CLIENT */
     BSP_LED_On(LED_BLUE);
     /* USER CODE END APP_BLE_CONNECTED_CLIENT */
-    result = aci_gap_start_observation_proc(SCAN_P, SCAN_L,0x00,  PUBLIC_ADDR, 0, 0x0);
-    //result = aci_gap_start_general_discovery_proc(SCAN_P, SCAN_L, PUBLIC_ADDR, 1);
+    //result = aci_gap_start_observation_proc(SCAN_P, SCAN_L,0x00,  PUBLIC_ADDR, 0, 0x0);
+    result = aci_gap_start_general_discovery_proc(SCAN_P, SCAN_L, PUBLIC_ADDR, 1);
     if (result == BLE_STATUS_SUCCESS)
     {
     /* USER CODE BEGIN BLE_SCAN_SUCCESS */
-    	start_timer();
+    	//start_timer();
     /* USER CODE END BLE_SCAN_SUCCESS */
       APP_DBG_MSG(" \r\n\r** START GENERAL DISCOVERY (SCAN) **  \r\n\r");
     }

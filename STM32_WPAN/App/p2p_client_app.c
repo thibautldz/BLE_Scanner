@@ -179,7 +179,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event);
 static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload);
 static void Button_Trigger_Received( void );
 static void Update_Service( void );
-
+static void display_UUID( uint8_t * package, uint8_t idx );
 
 aci_att_read_by_group_type_resp_event_rp0 * advertising_event;
 /* USER CODE END PFP */
@@ -190,6 +190,32 @@ aci_att_read_by_group_type_resp_event_rp0 * advertising_event;
  * @param  None
  * @retval None
  */
+static void display_UUID( uint8_t * package, uint8_t idx )
+{
+	uint16_t avant1 = UNPACK_2_BYTE_PARAMETER(&package[idx+2]);
+	uint16_t apres1 = UNPACK_2_BYTE_PARAMETER(&package[idx-2]);
+	uint16_t uuid = UNPACK_2_BYTE_PARAMETER(&package[idx]);
+	uint16_t apres2 = UNPACK_2_BYTE_PARAMETER(&package[idx-4]);
+	uint16_t apres3 = UNPACK_2_BYTE_PARAMETER(&package[idx-6]);
+	uint16_t apres4 = UNPACK_2_BYTE_PARAMETER(&package[idx-8]);
+	uint16_t apres5 = UNPACK_2_BYTE_PARAMETER(&package[idx-10]);
+	uint16_t apres6 = UNPACK_2_BYTE_PARAMETER(&package[idx-12]);
+
+	 APP_DBG_MSG("UUID : ");
+	 APP_DBG_MSG("%x",avant1);
+	 APP_DBG_MSG("%x",uuid);
+	 APP_DBG_MSG("-");
+	 APP_DBG_MSG("%x",apres1);
+	 APP_DBG_MSG("-");
+	 APP_DBG_MSG("%x",apres2);
+	 APP_DBG_MSG("-");
+	 APP_DBG_MSG("%x",apres3);
+	 APP_DBG_MSG("-");
+	 APP_DBG_MSG("%x",apres4);
+	 APP_DBG_MSG("%x",apres5);
+	 APP_DBG_MSG("%x",apres6);
+}
+
 void P2PC_APP_Init(void)
 {
   uint8_t index =0;
@@ -370,27 +396,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
             	APP_DBG_MSG("\n\r\n\rSERVICE :\n\r");
 
                 uuid = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx]);
-                uint16_t avant = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx+2]);
-                uint16_t apres1 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-2]);
-                uint16_t apres2 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-4]);
-                uint16_t apres3 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-6]);
-                uint16_t apres4 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-8]);
-                uint16_t apres5 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-10]);
-                uint16_t apres6 = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx-12]);
-
-                APP_DBG_MSG("UUID : ");
-                APP_DBG_MSG("%x",avant);
-                APP_DBG_MSG("%x",uuid);
-                APP_DBG_MSG("-");
-                APP_DBG_MSG("%x",apres1);
-                APP_DBG_MSG("-");
-                APP_DBG_MSG("%x",apres2);
-                APP_DBG_MSG("-");
-                APP_DBG_MSG("%x",apres3);
-                APP_DBG_MSG("-");
-                APP_DBG_MSG("%x",apres4);
-                APP_DBG_MSG("%x",apres5);
-                APP_DBG_MSG("%x",apres6);
+                display_UUID(pr->Attribute_Data_List, idx);
 
 
                // if(uuid == P2P_SERVICE_UUID)
@@ -460,56 +466,24 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 //if(uuid == P2P_WRITE_CHAR_UUID)
                // {
                  // APP_DBG_MSG("\n\r-- GATT : UUID FOUND - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
-                  uint16_t avant2 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx+4]);
-                  uint16_t avant1 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx+2]);
-                  uint16_t apres1 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-2]);
-                  uint16_t apres2 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-4]);
-                  uint16_t apres3 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-6]);
-                  uint16_t apres4 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-8]);
-                  uint16_t apres5 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-10]);
-                  uint16_t apres6 = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-12]);
                   uint8_t Property = pr->Handle_Value_Pair_Data[idx-15];
 
                   switch(Property)
                   {
                   case(UUID_READ) :
-						APP_DBG_MSG("UUID : ");
-                  	  	APP_DBG_MSG("%x",avant2);
-				        APP_DBG_MSG("%x",avant1);
-				        APP_DBG_MSG("%x",uuid);
-				        APP_DBG_MSG("-");
-				        APP_DBG_MSG("%x",apres1);
-				        APP_DBG_MSG("-");
-				        APP_DBG_MSG("%x",apres2);
-				        APP_DBG_MSG("-");
-				        APP_DBG_MSG("%x",apres3);
-				        APP_DBG_MSG("-");
-				        APP_DBG_MSG("%x",apres4);
-				        APP_DBG_MSG("%x",apres5);
-				        APP_DBG_MSG("%x",apres6);
+						display_UUID(pr->Handle_Value_Pair_Data, idx);
 				        APP_DBG_MSG("   READ\n\r");
 				        index++;
 				  break;
 
                   case(UUID_WRITE_WNR) :
-
+						display_UUID(pr->Handle_Value_Pair_Data, idx);
+						APP_DBG_MSG("   WRITE WITHOUT RESPONSE\n\r");
+						index++;
 				  break;
 
                   case(UUID_READ_WRITE_WNR) :
-						APP_DBG_MSG("UUID : ");
-                        APP_DBG_MSG("%x",avant2);
-                  		APP_DBG_MSG("%x",avant1);
-		                APP_DBG_MSG("%x",uuid);
-		                APP_DBG_MSG("-");
-		                APP_DBG_MSG("%x",apres1);
-		                APP_DBG_MSG("-");
-		                APP_DBG_MSG("%x",apres2);
-		                APP_DBG_MSG("-");
-		                APP_DBG_MSG("%x",apres3);
-		                APP_DBG_MSG("-");
-		                APP_DBG_MSG("%x",apres4);
-		                APP_DBG_MSG("%x",apres5);
-		                APP_DBG_MSG("%x",apres6);
+						display_UUID(pr->Handle_Value_Pair_Data, idx);
 		                APP_DBG_MSG("   READ/WRITE WHITHOUT RESPONSE\n\r");
 		                index++;
 		                //aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
@@ -517,37 +491,31 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                   break;
 
                   case(UUID_READ_WRITE) :
-
+					    display_UUID(pr->Handle_Value_Pair_Data, idx);
+						APP_DBG_MSG("  READ/WRITE\n\r");
+						index++;
 				  break;
 
                   case(UUID_WRITE) :
-
+		               display_UUID(pr->Handle_Value_Pair_Data, idx);
+					   APP_DBG_MSG("   WRITE\n\r");
+					   index++;
 				  break;
 
                   case(UUID_NOTIFY) :
-						APP_DBG_MSG("UUID : ");
-                  	    APP_DBG_MSG("%x",avant2);
-                  		APP_DBG_MSG("%x",avant1);
-                  	    APP_DBG_MSG("%x",uuid);
-				        APP_DBG_MSG("-");
-				        APP_DBG_MSG("%x",apres1);
-				        APP_DBG_MSG("-");
-				        APP_DBG_MSG("%x",apres2);
-				        APP_DBG_MSG("-");
-				        APP_DBG_MSG("%x",apres3);
-				        APP_DBG_MSG("-");
-				        APP_DBG_MSG("%x",apres4);
-				        APP_DBG_MSG("%x",apres5);
-				        APP_DBG_MSG("%x",apres6);
+						display_UUID(pr->Handle_Value_Pair_Data, idx);
 				        APP_DBG_MSG("   NOTIFY\n\r");
 				        index++;
 				  break;
 
                   case(UUID_INDICATES) :
-
+						display_UUID(pr->Handle_Value_Pair_Data, idx);
+					 	APP_DBG_MSG("   INDICATES\n\r");
+						index++;
 				  break;
 
                   default :
+                	  index++;
                   break;
                   }
  //                 aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
