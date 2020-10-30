@@ -225,8 +225,8 @@ static const uint8_t BLE_CFG_ER_VALUE[16] = CFG_BLE_ERK;
 tBDAddr SERVER_REMOTE_BDADDR;
 
 #define SCAN_REPORT_SIZE		40
-#define MAX_ADV_DATA_LEN		32
 #define BLE_ADD_LEN		        6
+
 typedef struct
 {
 uint8_t ScanAddr[BLE_ADD_LEN];
@@ -283,24 +283,24 @@ static uint8_t contains_address(uint8_t * newAdd, uint8_t structure)// 0 -> scan
         {
 			if(structure == 0)
 			{
-        		  if(  newAdd[0] == scan_report->ScanAddr[i][0]
-				    && newAdd[1] == scan_report->ScanAddr[i][1]
-				    && newAdd[2] == scan_report->ScanAddr[i][2]
-				    && newAdd[3] == scan_report->ScanAddr[i][3]
-				    && newAdd[4] == scan_report->ScanAddr[i][4]
-				    && newAdd[5] == scan_report->ScanAddr[i][5])
+        		  if(  newAdd[0] == scan_report[i].ScanAddr[0]
+				    && newAdd[1] == scan_report[i].ScanAddr[1]
+				    && newAdd[2] == scan_report[i].ScanAddr[2]
+				    && newAdd[3] == scan_report[i].ScanAddr[3]
+				    && newAdd[4] == scan_report[i].ScanAddr[4]
+				    && newAdd[5] == scan_report[i].ScanAddr[5])
         	        {
         			  ret = 1;
         	        }
 			}
 			else if (structure == 1)
 			{
-				 if(  newAdd[0] == scan_report_naming->ScanAddr[i][0]
-				   && newAdd[1] == scan_report_naming->ScanAddr[i][1]
-				   && newAdd[2] == scan_report_naming->ScanAddr[i][2]
-				   && newAdd[3] == scan_report_naming->ScanAddr[i][3]
-				   && newAdd[4] == scan_report_naming->ScanAddr[i][4]
-				   && newAdd[5] == scan_report_naming->ScanAddr[i][5])
+				 if(  newAdd[0] == scan_report_naming[i].ScanAddr[0]
+				   && newAdd[1] == scan_report_naming[i].ScanAddr[1]
+				   && newAdd[2] == scan_report_naming[i].ScanAddr[2]
+				   && newAdd[3] == scan_report_naming[i].ScanAddr[3]
+				   && newAdd[4] == scan_report_naming[i].ScanAddr[4]
+				   && newAdd[5] == scan_report_naming[i].ScanAddr[5])
 				   {
 				      ret = 1;
 				   }
@@ -465,16 +465,16 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             {
             	for(int y = 0 ; y < index_tab ; y++)
             	{
-				   if( scan_report_naming->ScanAddr[i][0] == scan_report->ScanAddr[y][0]
-					&& scan_report_naming->ScanAddr[i][1] == scan_report->ScanAddr[y][1]
-					&& scan_report_naming->ScanAddr[i][2] == scan_report->ScanAddr[y][2]
-					&& scan_report_naming->ScanAddr[i][3] == scan_report->ScanAddr[y][3]
-					&& scan_report_naming->ScanAddr[i][4] == scan_report->ScanAddr[y][4]
-					&& scan_report_naming->ScanAddr[i][5] == scan_report->ScanAddr[y][5])
+				   if( scan_report_naming[i].ScanAddr[0] == scan_report[y].ScanAddr[0]
+					&& scan_report_naming[i].ScanAddr[1] == scan_report[y].ScanAddr[1]
+					&& scan_report_naming[i].ScanAddr[2] == scan_report[y].ScanAddr[2]
+					&& scan_report_naming[i].ScanAddr[3] == scan_report[y].ScanAddr[3]
+					&& scan_report_naming[i].ScanAddr[4] == scan_report[y].ScanAddr[4]
+					&& scan_report_naming[i].ScanAddr[5] == scan_report[y].ScanAddr[5])
 					{
 					   for (int a = 0 ; a < MAX_ADV_DATA_LEN ; a++)
 					   {
-						   scan_report->ScanDATA[y][a] = scan_report_naming->ScanDATA[i][a];
+						   scan_report[y].ScanDATA[a] = scan_report_naming[i].ScanDATA[a];
 					   }
 					}
             	}
@@ -498,9 +498,9 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             	APP_DBG_MSG("%30s                        |   ", scan_report->ScanDATA[j]);
             	for (int k = 5; k >= 0; k--)
             	{
-            		APP_DBG_MSG("%02X   ", scan_report->ScanAddr[j][k]);
+            		APP_DBG_MSG("%02X   ", scan_report[j].ScanAddr[k]);
             	}
-            	APP_DBG_MSG("|    %4i dBm    ", scan_report->ScanRSSI[j]);
+            	APP_DBG_MSG("|    %4i dBm    ", scan_report[j].ScanRSSI);
             	APP_DBG_MSG("|\n\r");
             }
             index_tab_save = index_tab;
@@ -674,7 +674,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
             	 	 for (int k = 0; k < 6; k++)
             	 	 {
-            	 		scan_report_naming->ScanAddr[INDEX_FOUND][k] = le_advertising_event->Advertising_Report[0].Address[k];
+            	 		scan_report_naming[INDEX_FOUND].ScanAddr[k] = le_advertising_event->Advertising_Report[0].Address[k];
             	 	 }
             	 	 INDEX_FOUND++;
             	 }
@@ -691,16 +691,16 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
         	   {
         		   int8_t RSSI;
         		   RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
-        		   scan_report->ScanRSSI[t] = RSSI;
+        		   scan_report[index_tab].ScanRSSI = RSSI;
 
         	       for (int t = 0 ; t < 32 ; t++)
         	       {
-        	    	   scan_report->ScanDATA[t] = TAB_UNKNOWN[t];
+        	    	   scan_report[index_tab].ScanDATA[t] = TAB_UNKNOWN[t];
         	       }
 
         	       for (int k = 0; k < 6; k++)
         	       {
-        	    	   scan_report->ScanAddr[index_tab][k] = &le_advertising_event->Advertising_Report[0].Address[k];
+        	    	   scan_report[index_tab].ScanAddr[k] = le_advertising_event->Advertising_Report[0].Address[k];
         	       }
         	       index_tab++;
         	   }
