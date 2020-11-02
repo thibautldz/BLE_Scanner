@@ -490,12 +490,12 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
             for(int j = 0; j < index_tab ; j++)
             {
-            	if (scan_report->ScanDATA[j] == 0)
+            	if (scan_report[j].ScanDATA == 0)
             	{
             		break;
             	}
             	APP_DBG_MSG("%2d |", j);
-            	APP_DBG_MSG("%30s                        |   ", scan_report->ScanDATA[j]);
+            	APP_DBG_MSG("%30s                        |   ", scan_report[j].ScanDATA);
             	for (int k = 5; k >= 0; k--)
             	{
             		APP_DBG_MSG("%02X   ", scan_report[j].ScanAddr[k]);
@@ -669,7 +669,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             	{
             		 for (int t = 0 ; t < adlength-1 ; t++)
             		 {
-            			 scan_report_naming->ScanDATA[t] = (adv_report_data[p+2+t]);
+            			 scan_report_naming[INDEX_FOUND].ScanDATA[t] = (adv_report_data[p+2+t]);
             		 }
 
             	 	 for (int k = 0; k < 6; k++)
