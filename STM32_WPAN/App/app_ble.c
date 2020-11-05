@@ -490,10 +490,6 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
             for(int j = 0; j < index_tab ; j++)
             {
-            	if (scan_report[j].ScanDATA == 0)
-            	{
-            		break;
-            	}
             	APP_DBG_MSG("%2d |", j);
             	APP_DBG_MSG("%30s                        |   ", scan_report[j].ScanDATA);
             	for (int k = 5; k >= 0; k--)
@@ -1035,7 +1031,7 @@ static void Connect_Request_Selected_Addr( void )
   {
     result = aci_gap_create_connection(SCAN_P,
                                        SCAN_L,
-                                       PUBLIC_ADDR, scan_report->ScanAddr[which_connect],
+                                       PUBLIC_ADDR, scan_report[which_connect].ScanAddr,
                                        PUBLIC_ADDR,
                                        CONN_P1,
                                        CONN_P2,
