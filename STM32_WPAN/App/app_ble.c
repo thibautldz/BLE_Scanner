@@ -268,7 +268,6 @@ static void Connect_Request( void );
 static void Connect_Request_Selected_Addr( void );
 static void Switch_OFF_GPIO( void );
 static void rx_usartCallBack( void );
-static void start_timer( void );
 static uint8_t contains_address(uint8_t * newAdd, uint8_t structure);
 /* USER CODE BEGIN PFP */
 static void rx_usartCallBack( void )
@@ -641,11 +640,6 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
           event_data_size = le_advertising_event->Advertising_Report[0].Length_Data;
 
-          /* WARNING: be careful when decoding advertising report as its raw format cannot be mapped on a C structure.
-          The data and RSSI values could not be directly decoded from the RAM using the data and RSSI field from hci_le_advertising_report_event_rp0 structure.
-          Instead they must be read by using offsets (please refer to BLE specification).
-          RSSI = *(uint8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
-          */
           adv_report_data = (uint8_t*)(&le_advertising_event->Advertising_Report[0].Length_Data) + 1;
           uint8_t TAB_UNKNOWN[MAX_ADV_DATA_LEN]= "UNKNOWN";
 
@@ -681,7 +675,12 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 // This part of the code find the new devices addr save in SCANNING_REPORT as well as the RSSI in SCANNING_RSSI
 // We fix the maximum of devices at 40 and we check in a first time if the devices is not already in the REPORT array
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-          if (index_tab < 40)
+/* WARNING:
+The data and RSSI values could not be directly decoded from the RAM using the data and RSSI field from hci_le_advertising_report_event_rp0 structure.
+Instead they must be read by using offsets.
+RSSI = *(uint8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
+*/
+          if (index_tab < SCAN_REPORT_SIZE)
           {
         	   if(!contains_address(le_advertising_event->Advertising_Report[0].Address,0))
         	   {
@@ -689,12 +688,12 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
         		   RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
         		   scan_report[index_tab].ScanRSSI = RSSI;
 
-        	       for (int t = 0 ; t < 32 ; t++)
+        	       for (int t = 0 ; t < MAX_ADV_DATA_LEN ; t++)
         	       {
         	    	   scan_report[index_tab].ScanDATA[t] = TAB_UNKNOWN[t];
         	       }
 
-        	       for (int k = 0; k < 6; k++)
+        	       for (int k = 0; k < BLE_ADD_LEN; k++)
         	       {
         	    	   scan_report[index_tab].ScanAddr[k] = le_advertising_event->Advertising_Report[0].Address[k];
         	       }
