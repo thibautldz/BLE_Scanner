@@ -188,7 +188,10 @@ PLACE_IN_SECTION("BLE_APP_CONTEXT") static P2P_Client_App_Context_t P2P_Client_A
 static void Gatt_Notification(P2P_Client_App_Notification_evt_t *pNotification);
 static SVCCTL_EvtAckStatus_t Event_Handler(void *Event);
 /* USER CODE BEGIN PFP */
-static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload);
+
+// [MH] Old prototype was casing compilation error. TODO
+//static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload);
+tBleStatus Write_Char(uint8_t Service_Instance, uint8_t *pPayload);
 static void Button_Trigger_Received( void );
 static void Update_Service( void );
 static void display_UUID( uint8_t * package, uint8_t idx );
