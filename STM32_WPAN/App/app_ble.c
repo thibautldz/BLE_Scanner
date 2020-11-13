@@ -225,17 +225,13 @@ static const uint8_t BLE_CFG_ER_VALUE[16] = CFG_BLE_ERK;
 tBDAddr SERVER_REMOTE_BDADDR;
 
 #define SCAN_REPORT_SIZE		40
-#define BLE_ADD_LEN		        6
-
-typedef struct
-{
-uint8_t ScanAddr[BLE_ADD_LEN];
-int8_t ScanRSSI;
-uint8_t ScanDATA[MAX_ADV_DATA_LEN];
+typedef struct {
+	uint8_t ScanAddr[BD_ADDR_SIZE];
+	int8_t ScanRSSI;
+	uint8_t ComleteLocalName[MAX_ADV_DATA_LEN];
 } Scan_report_t;
 
 Scan_report_t scan_report[SCAN_REPORT_SIZE];
-Scan_report_t scan_report_naming[SCAN_REPORT_SIZE];
 
 
 static uint8_t index_tab = 0;
@@ -267,28 +263,34 @@ static void Connect_Request( void );
 static void Connect_Request_Selected_Addr( void );
 static void Switch_OFF_GPIO( void );
 static void rx_usartCallBack( void );
-static uint8_t contains_address(uint8_t * newAdd);
+static uint8_t contains_address(uint8_t * newAdd, uint8_t * index);
 /* USER CODE BEGIN PFP */
 static void rx_usartCallBack( void )
 {
 	UTIL_SEQ_SetTask(1<<CFG_TASK_CONN_DEV_SELECT_ID, CFG_PRIO_NBR);
 }
 
-static uint8_t contains_address(uint8_t * newAdd)
+/* Returns the index in scan_report  which belongs to BLE address or returns 0
+* @param newAdd: BLE address pointer
+* @param index: returns index in scan_report where the BLE address was stored or is about to be stored
+* @retval returns 0 when address not yet stored. Returns 1 when already stored
+* */
+static uint8_t contains_address(uint8_t * newAdd, uint8_t * index)
 {
-	uint8_t ret = 0;
-	for (int i = 0; i < index_tab; i++) {
+	int i = 0;
+	for (; i < index_tab; i++) {
 		if (newAdd[0] == scan_report[i].ScanAddr[0]
 				&& newAdd[1] == scan_report[i].ScanAddr[1]
 				&& newAdd[2] == scan_report[i].ScanAddr[2]
 				&& newAdd[3] == scan_report[i].ScanAddr[3]
 				&& newAdd[4] == scan_report[i].ScanAddr[4]
 				&& newAdd[5] == scan_report[i].ScanAddr[5]) {
-			ret = 1;
+			*index = i;
+			return 1;
 		}
-
 	}
-	return ret;
+	*index = i;
+	return 0;
 }
 
 /* USER CODE END PFP */
@@ -443,6 +445,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 // This part of the code prints Scanning report to terminal.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
             APP_DBG_MSG("-- GAP GENERAL DISCOVERY PROCEDURE_COMPLETED\n\r\n\r\n\r");
             APP_DBG_MSG("\t\t\t\t\t\t  ------------------\n\r");
             APP_DBG_MSG("\t\t\t\t\t\t||REPORT BLE SCANNER||\n\r");
@@ -452,7 +455,10 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             for(int j = 0; j < index_tab ; j++)
             {
             	APP_DBG_MSG("%2d |", j);
-            	APP_DBG_MSG("%30s                        |   ", scan_report[j].ScanDATA);
+            	if(scan_report[j].ComleteLocalName[0] == '\0')
+            		APP_DBG_MSG("%30s                        |   ", "UNKNOWN");
+            	else
+            		APP_DBG_MSG("%30s                        |   ", scan_report[j].ComleteLocalName);
             	for (int k = 5; k >= 0; k--)
             	{
             		APP_DBG_MSG("%02X   ", scan_report[j].ScanAddr[k]);
@@ -588,66 +594,87 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
           break; /* HCI_EVT_LE_CONN_COMPLETE */
 
-        case EVT_LE_ADVERTISING_REPORT:
-        {
-          uint8_t *adv_report_data;
-          /* USER CODE BEGIN EVT_LE_ADVERTISING_REPORT */
+		case EVT_LE_ADVERTISING_REPORT: {
+			uint8_t *adv_report_data;
+			/* USER CODE BEGIN EVT_LE_ADVERTISING_REPORT */
 
-          /* USER CODE END EVT_LE_ADVERTISING_REPORT */
-          le_advertising_event = (hci_le_advertising_report_event_rp0 *) meta_evt->data;
+			/* USER CODE END EVT_LE_ADVERTISING_REPORT */
+			le_advertising_event =
+					(hci_le_advertising_report_event_rp0*) meta_evt->data;
 
-          event_type = le_advertising_event->Advertising_Report[0].Event_Type;
+			event_type = le_advertising_event->Advertising_Report[0].Event_Type;
 
-          event_data_size = le_advertising_event->Advertising_Report[0].Length_Data;
+			event_data_size =
+					le_advertising_event->Advertising_Report[0].Length_Data;
 
-          adv_report_data = (uint8_t*)(&le_advertising_event->Advertising_Report[0].Length_Data) + 1;
-          uint8_t TAB_UNKNOWN[MAX_ADV_DATA_LEN]= "UNKNOWN";
+			adv_report_data =
+					(uint8_t*) (&le_advertising_event->Advertising_Report[0].Length_Data)
+							+ 1;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // This part of the code checks if the device was already found in previous Advertising report.
-// If not BLE address and RSSI is stored. COMPLETE_LOCAL_NAME is searched in Advertizing data. If it is found it is stored,
-// if not found "UNKNOWN" is stored instead.
+// If not BLE device is added in scan_report. COMPLETE_LOCAL_NAME and RSSI are stored or updated
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			//if (event_type == ADV_IND || event_type == SCAN_RSP) {
+			uint8_t ind;
+			// If BLE device not yet found, store it in array scan_report[]
 			if (!contains_address(
-					le_advertising_event->Advertising_Report[0].Address)) {
-				// Store RSSI value
-				int8_t RSSI;
-				RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
-				scan_report[index_tab].ScanRSSI = RSSI;
+					le_advertising_event->Advertising_Report[0].Address,
+					&ind)) {
+				index_tab++;
 
-				// Store BLE address
-				for (int k = 0; k < BLE_ADD_LEN; k++) {
-					scan_report[index_tab].ScanAddr[k] =
+				// Store BLE address which uniquely identifies BLE device
+				for (int k = 0; k < BD_ADDR_SIZE; k++) {
+					scan_report[ind].ScanAddr[k] =
 							le_advertising_event->Advertising_Report[0].Address[k];
 				}
-
-				// Search for COMPLETE_LOCAL_NAME
-				int p = 0;
-				while (p < event_data_size) {
-					adlength = adv_report_data[p];
-					adtype = adv_report_data[p + 1];
-					if (adtype == COMPLETE_LOCAL_NAME)
-					{
-						for (int t = 0; t < adlength - 1; t++)
-						{
-							scan_report[index_tab].ScanDATA[t] =
-									(adv_report_data[p + 2 + t]);
-						}
-						break; // COMPLETE_LOCAL_NAME, terminate the loop
-					}
-					p += adlength + 1;
-				}
-				// If COMPLETE_LOCAL_NAME was not found, store
-				if (!(p < event_data_size)) {
-					for (int t = 0; t < MAX_ADV_DATA_LEN; t++) {
-						scan_report[index_tab].ScanDATA[t] = TAB_UNKNOWN[t];
-					}
-				}
-				index_tab++;
 			}
-        }
 
-          break;
+			// Store RSSI
+			scan_report[ind].ScanRSSI = *(int8_t*) (adv_report_data
+					+ le_advertising_event->Advertising_Report[0].Length_Data);
+
+			// Search for COMPLETE_LOCAL_NAME and store it
+			int p = 0;
+			while (p < event_data_size) {
+				adlength = adv_report_data[p];
+				adtype = adv_report_data[p + 1];
+
+				switch (adtype) {
+				case COMPLETE_LOCAL_NAME:
+					for (int t = 0; t < adlength - 1; t++) {
+						scan_report[ind].ComleteLocalName[t] =
+								(adv_report_data[p + 2 + t]);
+					}
+					break;
+				case AD_TYPE_FLAGS: /* now get flags */
+					/* USER CODE BEGIN AD_TYPE_FLAGS */
+
+					/* USER CODE END AD_TYPE_FLAGS */
+					break;
+				case AD_TYPE_TX_POWER_LEVEL: /* Tx power level */
+					/* USER CODE BEGIN AD_TYPE_TX_POWER_LEVEL */
+
+					/* USER CODE END AD_TYPE_TX_POWER_LEVEL */
+					break;
+				case AD_TYPE_MANUFACTURER_SPECIFIC_DATA: /* Manufacturer Specific */
+					/* USER CODE BEGIN AD_TYPE_MANUFACTURER_SPECIFIC_DATA */
+				case AD_TYPE_SERVICE_DATA: /* service data 16 bits */
+					/* USER CODE BEGIN AD_TYPE_SERVICE_DATA */
+
+					/* USER CODE END AD_TYPE_SERVICE_DATA */
+					break;
+				default:
+					/* USER CODE BEGIN adtype_default */
+
+					/* USER CODE END adtype_default */
+					break;
+				}
+
+				p += adlength + 1;
+			}
+		}
+		  break;
 
         /* USER CODE BEGIN META_EVT */
 
@@ -869,7 +896,8 @@ static void Ble_Tl_Init( void )
 static void Scan_Request( void )
 {
   /* USER CODE BEGIN Scan_Request_1 */
-
+  // Clear scan_report
+  memset(scan_report, 0, SCAN_REPORT_SIZE*sizeof(Scan_report_t));
   /* USER CODE END Scan_Request_1 */
   tBleStatus result;
   if (BleApplicationContext.Device_Connection_Status != APP_BLE_CONNECTED_CLIENT)

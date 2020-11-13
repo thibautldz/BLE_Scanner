@@ -782,8 +782,6 @@ tBleStatus Write_Char(uint8_t Service_Instance, uint8_t *pPayload)
 
 void Button_Trigger_Received(void)
 {
-
-
   APP_DBG_MSG("-- P2P APPLICATION CLIENT  : BUTTON PUSHED - WRITE TO SERVER \n\r ");
   if(P2P_Client_App_Context.ButtonStatus.Button1==0x00){
     P2P_Client_App_Context.ButtonStatus.Button1=0x01;

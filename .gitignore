@@ -23,4 +23,6 @@ Obj
 *.zip
 *.list
 *.mk
+*.elf
+*.hex
 

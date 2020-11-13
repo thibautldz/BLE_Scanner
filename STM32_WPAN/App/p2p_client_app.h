@@ -63,7 +63,6 @@ typedef struct
 
 /* Exported macros ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-
 /* USER CODE END EM */
 
 /* Exported functions ---------------------------------------------*/
