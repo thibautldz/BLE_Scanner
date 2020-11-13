@@ -25,4 +25,5 @@ Obj
 *.mk
 *.elf
 *.hex
+*.orig
 
