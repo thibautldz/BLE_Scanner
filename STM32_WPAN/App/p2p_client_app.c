@@ -123,7 +123,7 @@ uint8_t INDEX_DISC = 0;
 
 typedef struct
 {
-	uint16_t handle_serv;
+	uint16_t handle_serv[MAX_PROPERTIES];
 	uint8_t IdProperties[MAX_PROPERTIES];
 } Service_scan_t;
 
@@ -188,14 +188,12 @@ PLACE_IN_SECTION("BLE_APP_CONTEXT") static P2P_Client_App_Context_t P2P_Client_A
 static void Gatt_Notification(P2P_Client_App_Notification_evt_t *pNotification);
 static SVCCTL_EvtAckStatus_t Event_Handler(void *Event);
 /* USER CODE BEGIN PFP */
-
-// [MH] Old prototype was casing compilation error. TODO
-//static tBleStatus Write_Char(uint16_t UUID, uint8_t Service_Instance, uint8_t *pPayload);
-tBleStatus Write_Char(uint8_t Service_Instance, uint8_t *pPayload);
+static tBleStatus Write_Char(uint8_t Service_Instance, uint8_t *pPayload);
 static void Button_Trigger_Received( void );
 static void Update_Service( void );
 static void display_UUID( uint8_t * package, uint8_t idx );
 static void rx_usartCallBack_Service( void );
+static void rx_usartCallBack_ReadorWrite( void );
 
 aci_att_read_by_group_type_resp_event_rp0 * advertising_event;
 /* USER CODE END PFP */
@@ -207,12 +205,88 @@ aci_att_read_by_group_type_resp_event_rp0 * advertising_event;
  * @retval None
  */
 uint8_t buff_services[2];
+uint8_t buff_RorW[1];
+uint8_t numproperty_for_RoW_cb;
+uint8_t numservice_for_RoW_cb;
+static void rx_usartCallBack_ReadorWrite( void )
+{
+	uint8_t choice = buff_RorW[1];
+	if( choice == 1 || choice == 2 )
+	{
+		if(choice == 1)
+		{
+			// The handle to Read/write is P2PWriteToServer
+			aP2PClientContext[numproperty_for_RoW_cb].state = APP_BLE_DISCOVER_READ_DESC;
+			aP2PClientContext[numproperty_for_RoW_cb].P2PWriteToServerCharHdle = scan_services[numservice_for_RoW_cb].handle_serv[numproperty_for_RoW_cb];
+		}
+		else
+		{
+			aP2PClientContext[numproperty_for_RoW_cb].state = APP_BLE_DISCOVER_WRITE_DESC;
+			aP2PClientContext[numproperty_for_RoW_cb].P2PWriteToServerCharHdle = scan_services[numservice_for_RoW_cb].handle_serv[numproperty_for_RoW_cb];
+		}
+	}
+	else
+	{
+		APP_DBG_MSG("You have to type 1 or 2, try again \n\r");
+		HW_UART_Receive_IT(hw_uart1, buff_RorW , sizeof(buff_RorW), rx_usartCallBack_ReadorWrite);
+	}
+}
 static void rx_usartCallBack_Service( void )
 {
 	uint8_t num_service = buff_services[0]-48;
 	uint8_t num_property = buff_services[1]-48;
+	numproperty_for_RoW_cb = num_property;
+	numservice_for_RoW_cb = num_service;
+	if( (num_service < 0 || num_service > 9) && (num_property < 0 || num_property > 9) )
+	{
+		APP_DBG_MSG("You have to write a correct number, try again \n\r");
+		HW_UART_Receive_IT(hw_uart1, buff_services , sizeof(buff_services), rx_usartCallBack_Service);
+	}
+	else
+	{
+	uint8_t property = scan_services[num_service].IdProperties[num_property];
 
+	switch(property)
+	{
+	case(UUID_READ) :
+		aP2PClientContext[num_property].state = APP_BLE_DISCOVER_READ_DESC;
+		aP2PClientContext[num_property].P2PWriteToServerCharHdle = scan_services[num_service].handle_serv[num_property];
+	break;
 
+	case(UUID_WRITE_WNR) :
+		aP2PClientContext[num_property].state = APP_BLE_DISCOVER_WRITE_DESC;
+		aP2PClientContext[num_property].P2PWriteToServerCharHdle = scan_services[num_service].handle_serv[num_property];
+	break;
+
+	case(UUID_READ_WRITE_WNR) :
+		APP_DBG_MSG("You want to read [type : 1] or write [type : 2] \n\r");
+		HW_UART_Receive_IT(hw_uart1, buff_RorW , sizeof(buff_RorW), rx_usartCallBack_ReadorWrite);
+	break;
+
+	case(UUID_READ_WRITE) :
+		APP_DBG_MSG("You want to read [type : 1] or write [type : 2] \n\r");
+		HW_UART_Receive_IT(hw_uart1, buff_RorW , sizeof(buff_RorW), rx_usartCallBack_ReadorWrite);
+	break;
+
+	case(UUID_WRITE) :
+		aP2PClientContext[num_property].state = APP_BLE_DISCOVER_WRITE_DESC;
+		aP2PClientContext[num_property].P2PWriteToServerCharHdle = scan_services[num_service].handle_serv[num_property];
+	break;
+
+	case(UUID_NOTIFY) :
+		aP2PClientContext[num_property].state = APP_BLE_ENABLE_NOTIFICATION_DESC;
+        aP2PClientContext[num_property].P2PNotificationCharHdle = scan_services[num_service].handle_serv[num_property];
+	break;
+
+	case(UUID_INDICATES) :
+		aP2PClientContext[num_property].state = APP_BLE_ENABLE_NOTIFICATION_DESC;
+		aP2PClientContext[num_property].P2PNotificationCharHdle = scan_services[num_service].handle_serv[num_property];
+	break;
+
+	default :
+	break;
+	}
+	}
 }
 static void display_UUID( uint8_t * package, uint8_t idx )
 {
@@ -460,10 +534,10 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
           uint8_t index;
 
           index = 0;
-          while((index < BLE_CFG_CLT_MAX_NBR_CB) &&
-                  (aP2PClientContext[index].connHandle != pr->Connection_Handle))
+          while((index_properties < BLE_CFG_CLT_MAX_NBR_CB) &&
+                  (aP2PClientContext[index_properties].connHandle != pr->Connection_Handle))
             index++;
-          if(index < BLE_CFG_CLT_MAX_NBR_CB)
+          if(index_properties < BLE_CFG_CLT_MAX_NBR_CB)
           {
 
             /* we are interested in only 16 bit UUIDs */
@@ -486,9 +560,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 #else
                 handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-2]);
 #endif
-                //if(uuid == P2P_WRITE_CHAR_UUID)
-               // {
-                 // APP_DBG_MSG("\n\r-- GATT : UUID FOUND - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
+
                   uint8_t Property = pr->Handle_Value_Pair_Data[idx-15];
                   if(uuid_byte_one == uuid)
                   {
@@ -506,7 +578,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 						display_UUID(pr->Handle_Value_Pair_Data, idx);
 						APP_DBG_MSG("   WRITE WITHOUT RESPONSE\n\r");
 						scan_services[index_services].IdProperties[index_properties] = Property;
-						scan_services[index_services].handle_serv = handle;
+						scan_services[index_services].handle_serv[index_properties] = handle;
 						index_properties++;
 				  break;
 
@@ -515,8 +587,6 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 		                APP_DBG_MSG("   READ/WRITE WHITHOUT RESPONSE\n\r");
 		                scan_services[index_services].IdProperties[index_properties] = Property;
 		                index_properties++;
-		                //aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
-		                //aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
                   break;
 
                   case(UUID_READ_WRITE) :
@@ -550,12 +620,16 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                   default :
                   break;
                   }
+                  /// activation de la selection de
+                  //APP_DBG_MSG("   To which service and sub-service you want to coonect ? first service/second sub-service \n\r");
+                  HW_UART_Receive_IT(hw_uart1, buff_services , sizeof(buff_services), rx_usartCallBack_Service);
+                  aP2PClientContext[index_properties].state = APP_BLE_CONNECTED_CLIENT;//stay connected to the device;
                   }
                 //  aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
              //   aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
 //                }
 //
-//                else if(uuid == P2P_NOTIFY_CHAR_UUID)
+//                else if(uuid == P2P__CHAR_UUID)
 //                {
 //                  APP_DBG_MSG("-- GATT : NOTIFICATION_CHAR_UUID FOUND  - connection handle 0x%x\n\r", aP2PClientContext[index].connHandle);
 //                  APP_DBG_MSG("UUID 2 : %x",uuid);
@@ -816,15 +890,11 @@ void Update_Service()
         APP_DBG_MSG("P2P_DISCOVER_SERVICES\n\r");
         break;
       case APP_BLE_DISCOVER_CHARACS:
-    	INDEX_DISC++;
-    	if(INDEX_DISC < 2)
-    	{
+
         APP_DBG_MSG("* GATT : Discover P2P Characteristics\n\r");
         aci_gatt_disc_all_char_of_service(aP2PClientContext[index].connHandle,
                                           aP2PClientContext[index].P2PServiceHandle,
                                           aP2PClientContext[index].P2PServiceEndHandle);
-    	}
-
         break;
       case APP_BLE_DISCOVER_WRITE_DESC: /* Not Used - No decriptor */
         APP_DBG_MSG("* GATT : Discover Descriptor of TX - Write Characteritic\n");
@@ -841,6 +911,7 @@ void Update_Service()
                                     aP2PClientContext[index].P2PNotificationCharHdle+2);
 
         break;
+
       case APP_BLE_ENABLE_NOTIFICATION_DESC:
         APP_DBG_MSG("* GATT : Enable Server Notification\n");
         aci_gatt_write_without_resp(aP2PClientContext[index].connHandle,
@@ -852,6 +923,14 @@ void Update_Service()
         BSP_LED_Off(LED_RED);
 
         break;
+
+      case APP_BLE_DISCOVER_READ_DESC :
+        aci_gatt_read_char_value(aP2PClientContext[index].connHandle,
+                aP2PClientContext[index].P2PNotificationDescHandle);
+        aP2PClientContext[index].state = APP_BLE_CONNECTED_CLIENT;
+
+        break;
+
       case APP_BLE_DISABLE_NOTIFICATION_DESC :
         APP_DBG_MSG("* GATT : Disable Server Notification\n");
         aci_gatt_write_char_desc(aP2PClientContext[index].connHandle,
