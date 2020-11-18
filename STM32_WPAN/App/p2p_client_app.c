@@ -290,28 +290,20 @@ static void rx_usartCallBack_Service( void )
 }
 static void display_UUID( uint8_t * package, uint8_t idx )
 {
-	uint16_t avant1 = UNPACK_2_BYTE_PARAMETER(&package[idx+2]);
-	uint16_t uuiddisp = UNPACK_2_BYTE_PARAMETER(&package[idx]);
-	uint16_t apres1 = UNPACK_2_BYTE_PARAMETER(&package[idx-2]);
-	uint16_t apres2 = UNPACK_2_BYTE_PARAMETER(&package[idx-4]);
-	uint16_t apres3 = UNPACK_2_BYTE_PARAMETER(&package[idx-6]);
-	uint16_t apres4 = UNPACK_2_BYTE_PARAMETER(&package[idx-8]);
-	uint16_t apres5 = UNPACK_2_BYTE_PARAMETER(&package[idx-10]);
-	uint16_t apres6 = UNPACK_2_BYTE_PARAMETER(&package[idx-12]);
+	uint16_t tab_construct_UUID[7];
+	for(uint8_t i=0 ; i < 8; i++)
+	{
+		tab_construct_UUID[i] = UNPACK_2_BYTE_PARAMETER(&package[(idx+2)-2*i]);
+	}
 
-	 APP_DBG_MSG("UUID : ");
-	 APP_DBG_MSG("%4X",avant1);
-	 APP_DBG_MSG("%4X",uuiddisp);
-	 APP_DBG_MSG("-");
-	 APP_DBG_MSG("%4X",apres1);
-	 APP_DBG_MSG("-");
-	 APP_DBG_MSG("%4X",apres2);
-	 APP_DBG_MSG("-");
-	 APP_DBG_MSG("%4X",apres3);
-	 APP_DBG_MSG("-");
-	 APP_DBG_MSG("%4X",apres4);
-	 APP_DBG_MSG("%4X",apres5);
-	 APP_DBG_MSG("%4X",apres6);
+	 APP_DBG_MSG("UUID : %4X%4X-%4X-%4X-%4X-%4X%4X%4X",tab_construct_UUID[0],
+	                                                   tab_construct_UUID[1],
+						                               tab_construct_UUID[2],
+										               tab_construct_UUID[3],
+													   tab_construct_UUID[4],
+													   tab_construct_UUID[5],
+													   tab_construct_UUID[6],
+													   tab_construct_UUID[7]);
 }
 
 void P2PC_APP_Init(void)
@@ -446,10 +438,9 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 
           uint8_t index;
           handle = pr->Connection_Handle;
-          INDEX_DISC = 0;
           index = 0;
-          while((index < BLE_CFG_CLT_MAX_NBR_CB) &&
-                  (aP2PClientContext[index].state != APP_BLE_IDLE))
+          while(
+                (aP2PClientContext[index].state != APP_BLE_IDLE))
           {
             APP_BLE_ConnStatus_t status;
 
@@ -466,9 +457,6 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
             }
             index++;
           }
-
-          if(index < BLE_CFG_CLT_MAX_NBR_CB)
-          {
             aP2PClientContext[index].connHandle= handle;
 
             numServ = (pr->Data_Length) / pr->Attribute_Data_Length;
@@ -489,8 +477,8 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
           {
             idx = 4;
 #endif
-              for (int i=0; i<numServ; i++)
-              {
+          for (int i=0; i<numServ; i++)
+          {
             	APP_DBG_MSG("\n\r\n\rSERVICE %d :\n\r", index_services);
 
                 uuid = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx]);
@@ -511,10 +499,10 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 index_services++;
                 aP2PClientContext[index].state = APP_BLE_DISCOVER_CHARACS ;
                 idx += 6;
+                index++;
               }
             }
           }
-        }
         break;
 
         case EVT_BLUE_ATT_READ_BY_TYPE_RESP:
@@ -534,11 +522,8 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
           uint8_t index;
 
           index = 0;
-          while((index_properties < BLE_CFG_CLT_MAX_NBR_CB) &&
-                  (aP2PClientContext[index_properties].connHandle != pr->Connection_Handle))
+          while((aP2PClientContext[index_properties].connHandle != pr->Connection_Handle))
             index++;
-          if(index_properties < BLE_CFG_CLT_MAX_NBR_CB)
-          {
 
             /* we are interested in only 16 bit UUIDs */
 #if (UUID_128BIT_FORMAT==1)
@@ -621,9 +606,8 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                   break;
                   }
                   /// activation de la selection de
-                  //APP_DBG_MSG("   To which service and sub-service you want to coonect ? first service/second sub-service \n\r");
-                  HW_UART_Receive_IT(hw_uart1, buff_services , sizeof(buff_services), rx_usartCallBack_Service);
-                  aP2PClientContext[index_properties].state = APP_BLE_CONNECTED_CLIENT;//stay connected to the device;
+                  //APP_DBG_MSG("   To which service and sub-service you want to connect ? first service/second sub-service \n\r");
+                  aP2PClientContext[index_properties].state = APP_BLE_WAIT_UART;
                   }
                 //  aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
              //   aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
@@ -646,7 +630,6 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
               }
             }
           }
-        }
         break;
 
         case EVT_BLUE_ATT_FIND_INFORMATION_RESP:
@@ -891,6 +874,10 @@ void Update_Service()
       case APP_BLE_DISCOVER_SERVICES:
         APP_DBG_MSG("P2P_DISCOVER_SERVICES\n\r");
         break;
+      case APP_BLE_WAIT_UART:
+    	  APP_DBG_MSG("   To which service and sub-service you want to connect ? first service/second sub-service \n\r");
+          HW_UART_Receive_IT(hw_uart1, buff_services , sizeof(buff_services), rx_usartCallBack_Service);
+              break;
       case APP_BLE_DISCOVER_CHARACS:
 
         APP_DBG_MSG("* GATT : Discover P2P Characteristics\n\r");

@@ -186,6 +186,9 @@ typedef struct
 #define APPBLE_GAP_DEVICE_NAME_LENGTH 7
 #define BD_ADDR_SIZE_LOCAL    6
 
+#define CONV_ASCII    0x30
+#define TENS_UNIT     10
+
 /* USER CODE BEGIN PD */
 #if OOB_DEMO != 0 
 #define LED_ON_TIMEOUT            (0.005*1000*1000/CFG_TS_TICK_VAL) /**< 5ms */
@@ -231,7 +234,7 @@ typedef struct
 {
 uint8_t ScanAddr[BLE_ADD_LEN];
 int8_t ScanRSSI;
-uint8_t ScanDATA[MAX_ADV_DATA_LEN];
+uint8_t ComleteLocalName[MAX_ADV_DATA_LEN];
 } Scan_report_t;
 
 Scan_report_t scan_report[SCAN_REPORT_SIZE];
@@ -268,44 +271,39 @@ static void Connect_Request( void );
 static void Connect_Request_Selected_Addr( void );
 static void Switch_OFF_GPIO( void );
 static void rx_usartCallBack( void );
-static uint8_t contains_address(uint8_t * newAdd, uint8_t structure);
+static uint8_t contains_address(uint8_t * newAdd, uint8_t * index);
 /* USER CODE BEGIN PFP */
+
+
+/* Active a function which will connect with a device
+* */
 static void rx_usartCallBack( void )
 {
 	UTIL_SEQ_SetTask(1<<CFG_TASK_CONN_DEV_SELECT_ID, CFG_PRIO_NBR);
 }
 
-static uint8_t contains_address(uint8_t * newAdd, uint8_t structure)// 0 -> scan_report / 1-> scan_report_name
+
+/* Returns the index in scan_report  which belongs to BLE address or returns 0
+* @param newAdd: BLE address pointer
+* @param index: returns index in scan_report where the BLE address was stored or is about to be stored
+* @retval returns 0 when address not yet stored. Returns 1 when already stored
+* */
+static uint8_t contains_address(uint8_t * newAdd, uint8_t * index)
 {
-	uint8_t ret = 0;
-		for(int i = 0; i < index_tab ; i++)
-        {
-			if(structure == 0)
-			{
-        		  if(  newAdd[0] == scan_report[i].ScanAddr[0]
-				    && newAdd[1] == scan_report[i].ScanAddr[1]
-				    && newAdd[2] == scan_report[i].ScanAddr[2]
-				    && newAdd[3] == scan_report[i].ScanAddr[3]
-				    && newAdd[4] == scan_report[i].ScanAddr[4]
-				    && newAdd[5] == scan_report[i].ScanAddr[5])
-        	        {
-        			  ret = 1;
-        	        }
+	int i = 0;
+		for (; i < index_tab; i++) {
+			if (newAdd[0] == scan_report[i].ScanAddr[0]
+					&& newAdd[1] == scan_report[i].ScanAddr[1]
+					&& newAdd[2] == scan_report[i].ScanAddr[2]
+					&& newAdd[3] == scan_report[i].ScanAddr[3]
+					&& newAdd[4] == scan_report[i].ScanAddr[4]
+					&& newAdd[5] == scan_report[i].ScanAddr[5]) {
+				*index = i;
+				return 1;
 			}
-			else if (structure == 1)
-			{
-				 if(  newAdd[0] == scan_report_naming[i].ScanAddr[0]
-				   && newAdd[1] == scan_report_naming[i].ScanAddr[1]
-				   && newAdd[2] == scan_report_naming[i].ScanAddr[2]
-				   && newAdd[3] == scan_report_naming[i].ScanAddr[3]
-				   && newAdd[4] == scan_report_naming[i].ScanAddr[4]
-				   && newAdd[5] == scan_report_naming[i].ScanAddr[5])
-				   {
-				      ret = 1;
-				   }
-			}
-        }
-		return ret;
+		}
+		*index = i;
+		return 0;
 }
 
 /* USER CODE END PFP */
@@ -457,27 +455,8 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             BSP_LED_Off(LED_BLUE);
             /* USER CODE END GAP_GENERAL_DISCOVERY_PROC */
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// This part of the code find if a report_name match with an addr, if yes, the name is put in the array SCANNING_NAME
-// After, it's just for the layout for the terminal
+// This part just display the scan report
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            for(int i = 0; i < INDEX_FOUND ; i++)
-            {
-            	for(int y = 0 ; y < index_tab ; y++)
-            	{
-				   if( scan_report_naming[i].ScanAddr[0] == scan_report[y].ScanAddr[0]
-					&& scan_report_naming[i].ScanAddr[1] == scan_report[y].ScanAddr[1]
-					&& scan_report_naming[i].ScanAddr[2] == scan_report[y].ScanAddr[2]
-					&& scan_report_naming[i].ScanAddr[3] == scan_report[y].ScanAddr[3]
-					&& scan_report_naming[i].ScanAddr[4] == scan_report[y].ScanAddr[4]
-					&& scan_report_naming[i].ScanAddr[5] == scan_report[y].ScanAddr[5])
-					{
-					   for (int a = 0 ; a < MAX_ADV_DATA_LEN ; a++)
-					   {
-						   scan_report[y].ScanDATA[a] = scan_report_naming[i].ScanDATA[a];
-					   }
-					}
-            	}
-            }
 
 
 
@@ -490,7 +469,12 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             for(int j = 0; j < index_tab ; j++)
             {
             	APP_DBG_MSG("%2d |", j);
-            	APP_DBG_MSG("%30s                        |   ", scan_report[j].ScanDATA);
+
+            	if(scan_report[j].ComleteLocalName[0] == '\0')
+            	   APP_DBG_MSG("%30s                        |   ", "UNKNOWN");
+            	else
+            	APP_DBG_MSG("%30s                        |   ", scan_report[j].ComleteLocalName);
+
             	for (int k = 5; k >= 0; k--)
             	{
             		APP_DBG_MSG("%02X   ", scan_report[j].ScanAddr[k]);
@@ -500,7 +484,6 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
             }
             index_tab_save = index_tab;
             index_tab = 0;
-            INDEX_FOUND = 0;
 
             APP_DBG_MSG("To which one you want to connect ? \n\r");
 
@@ -641,68 +624,70 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           event_data_size = le_advertising_event->Advertising_Report[0].Length_Data;
 
           adv_report_data = (uint8_t*)(&le_advertising_event->Advertising_Report[0].Length_Data) + 1;
-          uint8_t TAB_UNKNOWN[MAX_ADV_DATA_LEN]= "UNKNOWN";
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// This part of the code find during the scan the name of every devices, if not -> UNKNOWN
-// if a name device is found, his name is save in NAME_FOUND as well as his address in REPORT_FOUND
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-          int p = 0;
-          while(p < event_data_size)
-          {
-        	 adlength = adv_report_data[p];
-             adtype = adv_report_data[p + 1];
+			uint8_t ind;
+			// If BLE device not yet found, store it in array scan_report[]
+			if (!contains_address(
+					le_advertising_event->Advertising_Report[0].Address,
+					&ind)) {
+				index_tab++;
 
-             if(adtype == COMPLETE_LOCAL_NAME)
-             {
-            	if(!contains_address(le_advertising_event->Advertising_Report[0].Address,1))
-            	{
-            		 for (int t = 0 ; t < adlength-1 ; t++)
-            		 {
-            			 scan_report_naming[INDEX_FOUND].ScanDATA[t] = (adv_report_data[p+2+t]);
-            		 }
-
-            	 	 for (int k = 0; k < 6; k++)
-            	 	 {
-            	 		scan_report_naming[INDEX_FOUND].ScanAddr[k] = le_advertising_event->Advertising_Report[0].Address[k];
-            	 	 }
-            	 	 INDEX_FOUND++;
-            	 }
-             }
-          p += adlength + 1;
-          }
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// This part of the code find the new devices addr save in SCANNING_REPORT as well as the RSSI in SCANNING_RSSI
-// We fix the maximum of devices at 40 and we check in a first time if the devices is not already in the REPORT array
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				// Store BLE address which uniquely identifies BLE device
+				for (int k = 0; k < BD_ADDR_SIZE; k++) {
+					scan_report[ind].ScanAddr[k] =
+							le_advertising_event->Advertising_Report[0].Address[k];
+				}
+			}
 /* WARNING:
 The data and RSSI values could not be directly decoded from the RAM using the data and RSSI field from hci_le_advertising_report_event_rp0 structure.
 Instead they must be read by using offsets.
 RSSI = *(uint8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
 */
-          if (index_tab < SCAN_REPORT_SIZE)
-          {
-        	   if(!contains_address(le_advertising_event->Advertising_Report[0].Address,0))
-        	   {
-        		   int8_t RSSI;
-        		   RSSI = *(int8_t*) (adv_report_data + le_advertising_event->Advertising_Report[0].Length_Data);
-        		   scan_report[index_tab].ScanRSSI = RSSI;
+			// Store RSSI
+			scan_report[ind].ScanRSSI = *(int8_t*) (adv_report_data
+					+ le_advertising_event->Advertising_Report[0].Length_Data);
 
-        	       for (int t = 0 ; t < MAX_ADV_DATA_LEN ; t++)
-        	       {
-        	    	   scan_report[index_tab].ScanDATA[t] = TAB_UNKNOWN[t];
-        	       }
+			// Search for COMPLETE_LOCAL_NAME and store it
+			int p = 0;
+			while (p < event_data_size) {
+				adlength = adv_report_data[p];
+				adtype = adv_report_data[p + 1];
 
-        	       for (int k = 0; k < BLE_ADD_LEN; k++)
-        	       {
-        	    	   scan_report[index_tab].ScanAddr[k] = le_advertising_event->Advertising_Report[0].Address[k];
-        	       }
-        	       index_tab++;
-        	   }
-          	}
-        }
+				switch (adtype) {
+				case COMPLETE_LOCAL_NAME:
+					for (int t = 0; t < adlength - 1; t++) {
+						scan_report[ind].ComleteLocalName[t] =
+								(adv_report_data[p + 2 + t]);
+					}
+					break;
+				case AD_TYPE_FLAGS: /* now get flags */
+					/* USER CODE BEGIN AD_TYPE_FLAGS */
 
-          break;
+					/* USER CODE END AD_TYPE_FLAGS */
+					break;
+				case AD_TYPE_TX_POWER_LEVEL: /* Tx power level */
+					/* USER CODE BEGIN AD_TYPE_TX_POWER_LEVEL */
+
+					/* USER CODE END AD_TYPE_TX_POWER_LEVEL */
+					break;
+				case AD_TYPE_MANUFACTURER_SPECIFIC_DATA: /* Manufacturer Specific */
+					/* USER CODE BEGIN AD_TYPE_MANUFACTURER_SPECIFIC_DATA */
+				case AD_TYPE_SERVICE_DATA: /* service data 16 bits */
+					/* USER CODE BEGIN AD_TYPE_SERVICE_DATA */
+
+					/* USER CODE END AD_TYPE_SERVICE_DATA */
+					break;
+				default:
+					/* USER CODE BEGIN adtype_default */
+
+					/* USER CODE END adtype_default */
+					break;
+				}
+
+				p += adlength + 1;
+			}
+		}
+			break;
 
         /* USER CODE BEGIN META_EVT */
 
@@ -1006,9 +991,9 @@ static void Connect_Request_Selected_Addr( void )
 
   /* USER CODE END Connect_Request_1 */
   tBleStatus result;
-  uint8_t a = buff_which[0]-48;
-  uint8_t b = buff_which[1]-48;
-  uint8_t which_connect = (10*a) + b;
+  uint8_t a = buff_which[0]-CONV_ASCII; // to have the real number
+  uint8_t b = buff_which[1]-CONV_ASCII;
+  uint8_t which_connect = (TENS_UNIT*a) + b; // to have the number in XX
 
   if( (a < 0 || a > 9) && (b < 0 || b > 9) )
   {
