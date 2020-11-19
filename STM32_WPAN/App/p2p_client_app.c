@@ -116,6 +116,7 @@ enum UUID_PROPERTIES
  UUID_INDICATES	   		 =   (0x20),
 };
 uint8_t uuid_byte_one = 0;
+uint16_t last_UUID = 0;
 uint8_t INDEX_DISC = 0;
 
 #define MAX_PROPERTIES   20
@@ -193,7 +194,9 @@ static void Button_Trigger_Received( void );
 static void Update_Service( void );
 static void display_UUID( uint8_t * package, uint8_t idx );
 static void rx_usartCallBack_Service( void );
+static void rx_usart_Service( void );
 static void rx_usartCallBack_ReadorWrite( void );
+static uint8_t contains_property( uint16_t handle );
 
 aci_att_read_by_group_type_resp_event_rp0 * advertising_event;
 /* USER CODE END PFP */
@@ -231,7 +234,13 @@ static void rx_usartCallBack_ReadorWrite( void )
 		HW_UART_Receive_IT(hw_uart1, buff_RorW , sizeof(buff_RorW), rx_usartCallBack_ReadorWrite);
 	}
 }
+
 static void rx_usartCallBack_Service( void )
+{
+	UTIL_SEQ_SetTask( 1<<CFG_TASK_SELECT_SERVICE, CFG_SCH_PRIO_0);
+}
+
+static void rx_usart_Service( void )
 {
 	uint8_t num_service = buff_services[0]-48;
 	uint8_t num_property = buff_services[1]-48;
@@ -305,6 +314,21 @@ static void display_UUID( uint8_t * package, uint8_t idx )
 													   tab_construct_UUID[6],
 													   tab_construct_UUID[7]);
 }
+static uint8_t contains_property( uint16_t handle )
+{
+	uint8_t ret = 0;
+	for(int i = 0; i < index_services; i++)
+	{
+		for(int y = 0; y < index_properties; y++)
+		{
+			if(handle == scan_services[i].handle_serv[y])
+			{
+				ret = 1;
+			}
+		}
+	}
+	return ret;
+}
 
 void P2PC_APP_Init(void)
 {
@@ -312,6 +336,7 @@ void P2PC_APP_Init(void)
 /* USER CODE BEGIN P2PC_APP_Init_1 */
   UTIL_SEQ_RegTask( 1<< CFG_TASK_SEARCH_SERVICE_ID, UTIL_SEQ_RFU, Update_Service );
   UTIL_SEQ_RegTask( 1<< CFG_TASK_SW1_BUTTON_PUSHED_ID, UTIL_SEQ_RFU, Button_Trigger_Received );
+  UTIL_SEQ_RegTask( 1<< CFG_TASK_SELECT_SERVICE, UTIL_SEQ_RFU, rx_usart_Service);
 
   /**
    * Initialize LedButton Service
@@ -483,6 +508,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 
                 uuid = UNPACK_2_BYTE_PARAMETER(&pr->Attribute_Data_List[idx]);
                 uuid_byte_one = pr->Attribute_Data_List[idx+1];
+                last_UUID = UNPACK_2_BYTE_PARAMETER(pr->Attribute_Data_List[idx-14]);
                 display_UUID(pr->Attribute_Data_List, idx);
 
 
@@ -542,19 +568,21 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                 /* store the characteristic handle not the attribute handle */
 #if (UUID_128BIT_FORMAT==1)
                 handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-14]);
+                uint16_t compare = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-13]);
 #else
                 handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-2]);
 #endif
-
-                  uint8_t Property = pr->Handle_Value_Pair_Data[idx-15];
-                  if(uuid_byte_one == uuid)
+                  if(!contains_property(handle))
                   {
-                  APP_DBG_MSG("  %d   ",Property);
+                  uint8_t Property = pr->Handle_Value_Pair_Data[idx-15];
+                  if(uuid_byte_one == uuid || last_UUID == compare)
+                  {
                   switch(Property)
                   {
                   case(UUID_READ) :
 						display_UUID(pr->Handle_Value_Pair_Data, idx);
 				        APP_DBG_MSG("   READ\n\r");
+				        scan_services[index_services].handle_serv[index_properties] = handle;
 				        scan_services[index_services].IdProperties[index_properties] = Property;
 				        index_properties++;
 				  break;
@@ -570,6 +598,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                   case(UUID_READ_WRITE_WNR) :
 						display_UUID(pr->Handle_Value_Pair_Data, idx);
 		                APP_DBG_MSG("   READ/WRITE WHITHOUT RESPONSE\n\r");
+		                scan_services[index_services].handle_serv[index_properties] = handle;
 		                scan_services[index_services].IdProperties[index_properties] = Property;
 		                index_properties++;
                   break;
@@ -577,6 +606,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                   case(UUID_READ_WRITE) :
 					    display_UUID(pr->Handle_Value_Pair_Data, idx);
 						APP_DBG_MSG("  READ/WRITE\n\r");
+						scan_services[index_services].handle_serv[index_properties] = handle;
 						scan_services[index_services].IdProperties[index_properties] = Property;
 						index_properties++;
 				  break;
@@ -584,6 +614,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                   case(UUID_WRITE) :
 		               display_UUID(pr->Handle_Value_Pair_Data, idx);
 					   APP_DBG_MSG("   WRITE\n\r");
+					   scan_services[index_services].handle_serv[index_properties] = handle;
 					   scan_services[index_services].IdProperties[index_properties] = Property;
 					   index_properties++;
 				  break;
@@ -591,6 +622,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                   case(UUID_NOTIFY) :
 						display_UUID(pr->Handle_Value_Pair_Data, idx);
 				        APP_DBG_MSG("   NOTIFY\n\r");
+				        scan_services[index_services].handle_serv[index_properties] = handle;
 				        scan_services[index_services].IdProperties[index_properties] = Property;
 				        index_properties++;
 				  break;
@@ -598,6 +630,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                   case(UUID_INDICATES) :
 						display_UUID(pr->Handle_Value_Pair_Data, idx);
 					 	APP_DBG_MSG("   INDICATES\n\r");
+					 	scan_services[index_services].handle_serv[index_properties] = handle;
 					 	scan_services[index_services].IdProperties[index_properties] = Property;
 					 	index_properties++;
 				  break;
@@ -607,7 +640,21 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
                   }
                   /// activation de la selection de
                   //APP_DBG_MSG("   To which service and sub-service you want to connect ? first service/second sub-service \n\r");
-                  aP2PClientContext[index_properties].state = APP_BLE_WAIT_UART;
+#if (UUID_128BIT_FORMAT==1)
+                pr->Data_Length -= 21;
+                idx += 21;
+#else
+                pr->Data_Length -= 7;
+                idx += 7;
+#endif
+                  aP2PClientContext[index_properties].state = APP_BLE_DISCOVER_CHARACS;
+                  }
+                  }
+                  else
+                  {
+                	  	APP_DBG_MSG("   To which service and sub-service you want to connect ? first service/second sub-service \n\r");
+                		HW_UART_Receive_IT(hw_uart1, buff_services , sizeof(buff_services), rx_usartCallBack_Service);
+                		aP2PClientContext[index_properties].state = APP_BLE_WAIT_UART;
                   }
                 //  aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
              //   aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
@@ -620,13 +667,6 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 //                  aP2PClientContext[index].state = APP_BLE_DISCOVER_NOTIFICATION_CHAR_DESC;
 //                  aP2PClientContext[index].P2PNotificationCharHdle = handle;
 //                }
-#if (UUID_128BIT_FORMAT==1)
-                pr->Data_Length -= 21;
-                idx += 21;
-#else
-                pr->Data_Length -= 7;
-                idx += 7;
-#endif
               }
             }
           }
@@ -875,8 +915,7 @@ void Update_Service()
         APP_DBG_MSG("P2P_DISCOVER_SERVICES\n\r");
         break;
       case APP_BLE_WAIT_UART:
-    	  APP_DBG_MSG("   To which service and sub-service you want to connect ? first service/second sub-service \n\r");
-          HW_UART_Receive_IT(hw_uart1, buff_services , sizeof(buff_services), rx_usartCallBack_Service);
+
               break;
       case APP_BLE_DISCOVER_CHARACS:
 
