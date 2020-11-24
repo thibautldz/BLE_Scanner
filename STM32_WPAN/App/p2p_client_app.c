@@ -105,6 +105,10 @@ typedef struct
 
 }P2P_ClientContext_t;
 
+
+/*
+* Enum of the common properties
+* */
 enum UUID_PROPERTIES
 {
  UUID_READ               =   (0x02),
@@ -122,6 +126,11 @@ uint8_t INDEX_DISC = 0;
 #define MAX_PROPERTIES   20
 #define MAX_SERVICES     10
 
+/*
+ * structure which store
+ * 1. the handle for using a property
+ * 2. what property it is
+* */
 typedef struct
 {
 	uint16_t handle_serv[MAX_PROPERTIES];
@@ -211,6 +220,8 @@ uint8_t buff_services[2];
 uint8_t buff_RorW[1];
 uint8_t numproperty_for_RoW_cb;
 uint8_t numservice_for_RoW_cb;
+
+/* This function do the difference between READ and WRITE */
 static void rx_usartCallBack_ReadorWrite( void )
 {
 	uint8_t choice = buff_RorW[1];
@@ -240,6 +251,9 @@ static void rx_usartCallBack_Service( void )
 	UTIL_SEQ_SetTask( 1<<CFG_TASK_SELECT_SERVICE, CFG_SCH_PRIO_0);
 }
 
+/* This function is here to know which service and characteristics we want,
+ * it compare to the scan_services structure and select a APP_BLE state
+* */
 static void rx_usart_Service( void )
 {
 	uint8_t num_service = buff_services[0]-48;
@@ -297,6 +311,11 @@ static void rx_usart_Service( void )
 	}
 	}
 }
+/* Return nothing, it's just a printf for display UUID in a terminal -> 115200 Bauds
+* @param package: data received pointer
+* @param idx: 16 or 17, it depend if it's GATT primary services or GATT discover characteristics
+* @retval none
+* */
 static void display_UUID( uint8_t * package, uint8_t idx )
 {
 	uint16_t tab_construct_UUID[7];
@@ -572,11 +591,13 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 #else
                 handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-2]);
 #endif
-                  if(!contains_property(handle))
+                /* if the characteristics handle is a new handle and if it's a good UUID */
+                if(!contains_property(handle))
                   {
                   uint8_t Property = pr->Handle_Value_Pair_Data[idx-15];
                   if(uuid_byte_one == uuid || last_UUID == compare)
                   {
+                /* compare the property in pr->Handle_Value_Pair_Data[2] */
                   switch(Property)
                   {
                   case(UUID_READ) :
