@@ -591,9 +591,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 #else
                 handle = UNPACK_2_BYTE_PARAMETER(&pr->Handle_Value_Pair_Data[idx-2]);
 #endif
-                /* if the characteristics handle is a new handle and if it's a good UUID */
-                if(!contains_property(handle))
-                  {
+                /* if the it's a good UUID */
                   uint8_t Property = pr->Handle_Value_Pair_Data[idx-15];
                   if(uuid_byte_one == uuid || last_UUID == compare)
                   {
@@ -657,10 +655,11 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 				  break;
 
                   default :
+                		APP_DBG_MSG("   To which service and sub-service you want to connect ? first service/second sub-service \n\r");
+                	    HW_UART_Receive_IT(hw_uart1, buff_services , sizeof(buff_services), rx_usartCallBack_Service);
+                	    aP2PClientContext[index_properties].state = APP_BLE_WAIT_UART;
                   break;
                   }
-                  /// activation de la selection de
-                  //APP_DBG_MSG("   To which service and sub-service you want to connect ? first service/second sub-service \n\r");
 #if (UUID_128BIT_FORMAT==1)
                 pr->Data_Length -= 21;
                 idx += 21;
@@ -670,13 +669,7 @@ static SVCCTL_EvtAckStatus_t Event_Handler(void *Event)
 #endif
                   aP2PClientContext[index_properties].state = APP_BLE_DISCOVER_CHARACS;
                   }
-                  }
-                  else
-                  {
-                	  	APP_DBG_MSG("   To which service and sub-service you want to connect ? first service/second sub-service \n\r");
-                		HW_UART_Receive_IT(hw_uart1, buff_services , sizeof(buff_services), rx_usartCallBack_Service);
-                		aP2PClientContext[index_properties].state = APP_BLE_WAIT_UART;
-                  }
+
                 //  aP2PClientContext[index].state = APP_BLE_DISCOVER_WRITE_DESC;
              //   aP2PClientContext[index].P2PWriteToServerCharHdle = handle;
 //                }
